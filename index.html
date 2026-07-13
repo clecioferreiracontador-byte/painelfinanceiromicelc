@@ -25,6 +25,8 @@
   .user-bar{display:flex; align-items:center; justify-content:center; gap:12px; margin-top:10px; font-size:0.8rem; color:var(--muted);}
   .cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin-bottom:28px;}
   .card{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px;}
+  .card.clickable{cursor:pointer; transition:border-color .15s, transform .15s;}
+  .card.clickable:hover{border-color:var(--blue); transform:translateY(-2px);}
   .card .label{color:var(--muted); font-size:0.78rem; text-transform:uppercase; letter-spacing:.03em;}
   .card .value{font-size:1.35rem; font-weight:700; margin-top:6px;}
   .pos{color:var(--green);} .neg{color:var(--red);} .info{color:var(--blue);} .warn{color:var(--yellow);}
@@ -49,6 +51,7 @@
   }
   button.secondary{background:var(--card2); border:1px solid var(--border); color:var(--text);}
   button.small{padding:5px 10px; font-size:0.76rem; font-weight:600;}
+  button.iconbtn{padding:0 12px; min-width:38px;}
   button.danger{background:#7f1d1d; color:#fecaca; padding:5px 10px; font-size:0.78rem;}
   button.edit{background:#1e3a5f; color:#93c5fd; padding:5px 10px; font-size:0.78rem;}
   button:hover{opacity:0.9;}
@@ -88,6 +91,11 @@
   .login-card input{width:100%;}
   .login-card button{width:100%; margin-top:6px;}
   #loginError{color:var(--red); font-size:0.8rem; margin-top:10px; text-align:center; min-height:1em;}
+
+  .modal-overlay{position:fixed; inset:0; background:rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; z-index:1000; padding:20px;}
+  .modal-card{background:var(--card); border:1px solid var(--border); border-radius:14px; padding:20px; max-width:760px; width:100%; max-height:85vh; overflow-y:auto;}
+  .modal-header{display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; gap:10px;}
+  .modal-header h3{margin:0; font-size:1.05rem;}
 </style>
 </head>
 <body>
@@ -112,7 +120,7 @@
 
 <div class="header-block">
   <h1>Planilha Financeira Micelc</h1>
-  <div class="sub">Registre receitas, despesas, cartão de crédito, dívidas, conta corrente e investimentos, tudo em um único lançamento. Sincronizado na nuvem entre seus aparelhos.</div>
+  <div class="sub">Registre receitas, despesas, cartão de crédito, dívidas, conta corrente e investimentos, tudo em um único lançamento. Clique nos cards para ver o razão de cada um.</div>
   <div class="user-bar">
     <span id="userEmailDisplay"></span>
     <button class="secondary small" id="logoutBtn">Sair</button>
@@ -142,7 +150,10 @@
     </div>
     <div class="field" id="fieldCategoria">
       <label>Categoria</label>
-      <select id="lancCategoria"></select>
+      <div style="display:flex; gap:6px;">
+        <select id="lancCategoria" style="flex:1;"></select>
+        <button type="button" class="secondary iconbtn" onclick="adicionarCategoria()" title="Nova categoria">+</button>
+      </div>
     </div>
     <div class="field">
       <label>Valor (R$)</label>
@@ -246,6 +257,22 @@
 
 </div>
 
+<div id="razaoModal" class="modal-overlay" onclick="if(event.target===this) fecharRazao()">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3 id="razaoTitle">Razão</h3>
+      <button class="secondary small" onclick="fecharRazao()">Fechar</button>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Data</th><th>Tipo</th><th>Detalhe</th><th>Descrição</th><th>Valor</th><th></th></tr></thead>
+        <tbody id="razaoBody"></tbody>
+      </table>
+    </div>
+    <div class="totals-line"><span id="razaoTotalLabel">Total</span><span id="razaoTotal">R$ 0,00</span></div>
+  </div>
+</div>
+
 <script>
 // ---------- Firebase ----------
 const firebaseConfig = {
@@ -304,11 +331,13 @@ auth.onAuthStateChanged(function(user){
       if(snap.exists){
         data = snap.data();
         if(!data.lancamentos) data.lancamentos = [];
+        if(!data.categoriasReceita) data.categoriasReceita = [];
+        if(!data.categoriasDespesa) data.categoriasDespesa = [];
       } else {
-        let initial = { lancamentos: [] };
+        let initial = { lancamentos: [], categoriasReceita: [], categoriasDespesa: [] };
         const localRaw = localStorage.getItem(OLD_LOCAL_KEY);
         if(localRaw){
-          try{ const parsed = JSON.parse(localRaw); if(parsed && parsed.lancamentos) initial = parsed; }catch(e){}
+          try{ const parsed = JSON.parse(localRaw); if(parsed && parsed.lancamentos) initial = Object.assign(initial, parsed); }catch(e){}
         }
         data = initial;
         docRef.set(data);
@@ -319,7 +348,7 @@ auth.onAuthStateChanged(function(user){
       document.getElementById('loginError').textContent = 'Erro ao carregar dados: ' + err.message;
     });
   } else {
-    data = { lancamentos: [] };
+    data = { lancamentos: [], categoriasReceita: [], categoriasDespesa: [] };
     showLogin();
   }
 });
@@ -356,9 +385,10 @@ const CORES = ['#3b82f6','#ef4444','#22c55e','#eab308','#a855f7','#f97316','#14b
 
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 
-let data = { lancamentos: [] };
+let data = { lancamentos: [], categoriasReceita: [], categoriasDespesa: [] };
 let charts = {};
 let editingId = null;
+let razaoAtualKey = null;
 
 function saveData(){
   if(docRef) docRef.set(data);
@@ -383,8 +413,34 @@ const TAG_INFO = {
 function populateCategoriaSelect(){
   const tipo = document.getElementById('lancTipo').value;
   const sel = document.getElementById('lancCategoria');
-  const lista = tipo === 'receita' ? CATEGORIAS_RECEITA : CATEGORIAS_DESPESA;
+  const base = tipo === 'receita' ? CATEGORIAS_RECEITA : CATEGORIAS_DESPESA;
+  const extras = tipo === 'receita' ? (data.categoriasReceita||[]) : (data.categoriasDespesa||[]);
+  const lista = base.concat(extras.filter(c => !base.includes(c)));
+  const valorAtual = sel.value;
   sel.innerHTML = lista.map(c => `<option value="${c}">${c}</option>`).join('');
+  if(lista.includes(valorAtual)) sel.value = valorAtual;
+}
+
+function adicionarCategoria(){
+  const tipo = document.getElementById('lancTipo').value;
+  if(tipo !== 'receita' && tipo !== 'despesa'){
+    alert('Selecione o tipo Receita ou Despesa antes de criar uma categoria.');
+    return;
+  }
+  const nome = prompt('Nome da nova categoria de ' + (tipo === 'receita' ? 'receita' : 'despesa') + ':');
+  if(!nome || !nome.trim()) return;
+  const nomeTrim = nome.trim();
+  const listKey = tipo === 'receita' ? 'categoriasReceita' : 'categoriasDespesa';
+  const base = tipo === 'receita' ? CATEGORIAS_RECEITA : CATEGORIAS_DESPESA;
+  if(!data[listKey]) data[listKey] = [];
+  if(base.includes(nomeTrim) || data[listKey].includes(nomeTrim)){
+    alert('Essa categoria já existe.');
+    return;
+  }
+  data[listKey].push(nomeTrim);
+  saveData();
+  populateCategoriaSelect();
+  document.getElementById('lancCategoria').value = nomeTrim;
 }
 
 function updateFormFieldsVisibility(tipo){
@@ -424,6 +480,7 @@ function renderAll(){
   renderDividas();
   renderInvestimentos();
   renderContaCartaoPanels();
+  if(razaoAtualKey) renderRazaoContent();
 }
 
 function renderSummary(){
@@ -438,16 +495,16 @@ function renderSummary(){
   const totalInvest = sumByTipo('investimento');
 
   const cards = [
-    {label:'Saldo Conta Corrente', value: fmt(contaAtual ? contaAtual.valor : 0), cls:'info'},
-    {label:'Receitas do Mês', value: fmt(receitaMes), cls:'pos'},
-    {label:'Despesas do Mês', value: fmt(despesaMes), cls:'neg'},
-    {label:'Resultado do Mês', value: fmt(resultado), cls: resultado>=0?'pos':'neg'},
-    {label:'Fatura Cartão', value: fmt(cartaoAtual ? cartaoAtual.valor : 0), cls:'warn'},
-    {label:'Total Investido', value: fmt(totalInvest), cls:'pos'},
-    {label:'Total em Dívidas', value: fmt(totalDividas), cls:'neg'},
+    {key:'conta', label:'Saldo Conta Corrente', value: fmt(contaAtual ? contaAtual.valor : 0), cls:'info'},
+    {key:'receitaMes', label:'Receitas do Mês', value: fmt(receitaMes), cls:'pos'},
+    {key:'despesaMes', label:'Despesas do Mês', value: fmt(despesaMes), cls:'neg'},
+    {key:'resultadoMes', label:'Resultado do Mês', value: fmt(resultado), cls: resultado>=0?'pos':'neg'},
+    {key:'cartao', label:'Fatura Cartão', value: fmt(cartaoAtual ? cartaoAtual.valor : 0), cls:'warn'},
+    {key:'investimento', label:'Total Investido', value: fmt(totalInvest), cls:'pos'},
+    {key:'divida', label:'Total em Dívidas', value: fmt(totalDividas), cls:'neg'},
   ];
   document.getElementById('summaryCards').innerHTML = cards.map(c => `
-    <div class="card">
+    <div class="card clickable" onclick="abrirRazao('${c.key}')">
       <div class="label">${c.label}</div>
       <div class="value ${c.cls}">${c.value}</div>
     </div>
@@ -473,21 +530,10 @@ function detalheFor(item){
   return '-';
 }
 
-function renderTable(){
-  const monthKey = currentMonthKey();
-  const itens = data.lancamentos.filter(l => itemInMonth(l, monthKey)).sort((a,b)=> b.data.localeCompare(a.data));
-  const body = document.getElementById('txTableBody');
-  const empty = document.getElementById('txEmpty');
-  if(itens.length === 0){
-    body.innerHTML = '';
-    empty.style.display = 'block';
-    return;
-  }
-  empty.style.display = 'none';
-  body.innerHTML = itens.map(item => {
-    const tag = TAG_INFO[item.tipo] || {label:item.tipo, cls:''};
-    const corValor = (item.tipo === 'receita' || item.tipo === 'investimento') ? 'pos' : (item.tipo === 'despesa' || item.tipo === 'divida') ? 'neg' : 'info';
-    return `
+function linhaLancamentoHtml(item){
+  const tag = TAG_INFO[item.tipo] || {label:item.tipo, cls:''};
+  const corValor = (item.tipo === 'receita' || item.tipo === 'investimento') ? 'pos' : (item.tipo === 'despesa' || item.tipo === 'divida') ? 'neg' : 'info';
+  return `
     <tr>
       <td>${fmtDate(item.data)}</td>
       <td><span class="tag ${tag.cls}">${tag.label}</span></td>
@@ -499,7 +545,20 @@ function renderTable(){
         <button class="danger" onclick="deleteLancamento('${item.id}')">Excluir</button>
       </td>
     </tr>`;
-  }).join('');
+}
+
+function renderTable(){
+  const monthKey = currentMonthKey();
+  const itens = data.lancamentos.filter(l => itemInMonth(l, monthKey)).sort((a,b)=> b.data.localeCompare(a.data));
+  const body = document.getElementById('txTableBody');
+  const empty = document.getElementById('txEmpty');
+  if(itens.length === 0){
+    body.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+  body.innerHTML = itens.map(linhaLancamentoHtml).join('');
 }
 
 function deleteLancamento(id){
@@ -510,6 +569,7 @@ function deleteLancamento(id){
 }
 
 function editLancamento(id){
+  fecharRazao();
   const item = data.lancamentos.find(l => l.id === id);
   if(!item) return;
   editingId = id;
@@ -541,11 +601,80 @@ function cancelEdit(){
 }
 
 function novoLancamento(tipo){
+  fecharRazao();
   cancelEdit();
   document.getElementById('lancTipo').value = tipo;
   updateFormFieldsVisibility(tipo);
   document.getElementById('lancForm').scrollIntoView({behavior:'smooth', block:'start'});
   setTimeout(()=>document.getElementById('lancValor').focus(), 300);
+}
+
+// ---------- Razão (detalhe por card) ----------
+function getRazaoConfig(key){
+  const monthKey = currentMonthKey();
+  const monthLabel = monthKey ? monthKey.split('-').reverse().join('/') : '';
+  let itens = [];
+  let titulo = '';
+  let modoValorAtual = false;
+  if(key === 'conta'){
+    itens = data.lancamentos.filter(l=>l.tipo==='conta');
+    titulo = 'Razão — Conta Corrente (histórico de atualizações)';
+    modoValorAtual = true;
+  } else if(key === 'cartao'){
+    itens = data.lancamentos.filter(l=>l.tipo==='cartao');
+    titulo = 'Razão — Cartão de Crédito (histórico de faturas)';
+    modoValorAtual = true;
+  } else if(key === 'divida'){
+    itens = data.lancamentos.filter(l=>l.tipo==='divida');
+    titulo = 'Razão — Dívidas';
+  } else if(key === 'investimento'){
+    itens = data.lancamentos.filter(l=>l.tipo==='investimento');
+    titulo = 'Razão — Investimentos';
+  } else if(key === 'receitaMes'){
+    itens = data.lancamentos.filter(l=>l.tipo==='receita' && itemInMonth(l, monthKey));
+    titulo = 'Razão — Receitas de ' + monthLabel;
+  } else if(key === 'despesaMes'){
+    itens = data.lancamentos.filter(l=>l.tipo==='despesa' && itemInMonth(l, monthKey));
+    titulo = 'Razão — Despesas de ' + monthLabel;
+  } else if(key === 'resultadoMes'){
+    itens = data.lancamentos.filter(l=>(l.tipo==='receita'||l.tipo==='despesa') && itemInMonth(l, monthKey));
+    titulo = 'Razão — Resultado de ' + monthLabel;
+  }
+  itens = itens.slice().sort((a,b)=> b.data.localeCompare(a.data));
+  let total;
+  let totalLabel = 'Total';
+  if(modoValorAtual){
+    total = itens.length ? Number(itens[0].valor) : 0;
+    totalLabel = 'Valor mais recente';
+  } else if(key === 'resultadoMes'){
+    total = itens.reduce((s,l)=> s + (l.tipo==='receita' ? Number(l.valor) : -Number(l.valor)), 0);
+  } else {
+    total = itens.reduce((s,l)=>s+Number(l.valor),0);
+  }
+  return {titulo, itens, total, totalLabel};
+}
+
+function abrirRazao(key){
+  razaoAtualKey = key;
+  renderRazaoContent();
+  document.getElementById('razaoModal').style.display = 'flex';
+}
+function fecharRazao(){
+  document.getElementById('razaoModal').style.display = 'none';
+  razaoAtualKey = null;
+}
+function renderRazaoContent(){
+  if(!razaoAtualKey) return;
+  const cfg = getRazaoConfig(razaoAtualKey);
+  document.getElementById('razaoTitle').textContent = cfg.titulo;
+  const body = document.getElementById('razaoBody');
+  if(cfg.itens.length === 0){
+    body.innerHTML = '<tr><td colspan="6" class="empty">Nenhum lançamento encontrado.</td></tr>';
+  } else {
+    body.innerHTML = cfg.itens.map(linhaLancamentoHtml).join('');
+  }
+  document.getElementById('razaoTotalLabel').textContent = cfg.totalLabel;
+  document.getElementById('razaoTotal').textContent = fmt(cfg.total);
 }
 
 function renderCharts(){
