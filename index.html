@@ -11,7 +11,7 @@
 <style>
   :root{
     --bg:#0f172a; --card:#1e293b; --card2:#162032; --text:#e2e8f0; --muted:#94a3b8;
-    --green:#22c55e; --red:#ef4444; --blue:#3b82f6; --yellow:#eab308; --purple:#a855f7; --orange:#f97316;
+    --green:#22c55e; --red:#ef4444; --blue:#3b82f6; --yellow:#eab308; --purple:#64748b; --orange:#f97316;
     --border:#334155;
   }
   *{box-sizing:border-box;}
@@ -99,13 +99,16 @@
   .modal-header{display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; gap:10px;}
   .modal-header h3{margin:0; font-size:1.05rem;}
 
-  /* Orçamento do mês - botão pequeno no canto (só aparece logado) + modal */
-  #orcamentoIconBtn{
-    position:fixed; top:16px; left:16px; z-index:950; background:var(--purple); color:white;
+  /* Botões pequenos no canto (só aparecem logado) */
+  .corner-btn{
+    position:fixed; left:16px; z-index:950; background:var(--purple); color:white;
     border:none; border-radius:10px; padding:9px 14px; font-size:0.78rem; font-weight:700; cursor:pointer;
     box-shadow:0 2px 10px rgba(0,0,0,0.4); align-items:center; gap:6px;
   }
-  #orcamentoIconBtn:hover{opacity:0.9;}
+  .corner-btn:hover{opacity:0.9;}
+  #orcamentoIconBtn{ top:16px; }
+  #provisoesIconBtn{ top:64px; }
+
   .orc-total-box{background:var(--card2); border:1px solid var(--border); border-radius:10px; padding:12px; margin-bottom:16px;}
   .orc-bar-wrap{height:9px; background:var(--card2); border-radius:5px; overflow:hidden; margin-top:8px;}
   .orc-total-box .orc-bar-wrap{background:#0f172a;}
@@ -133,7 +136,8 @@
   </div>
 </div>
 
-<button id="orcamentoIconBtn" onclick="abrirOrcamento()" style="display:none;">📅 Orçamento</button>
+<button id="orcamentoIconBtn" class="corner-btn" onclick="abrirOrcamento()" style="display:none;">📅 Orçamento</button>
+<button id="provisoesIconBtn" class="corner-btn" onclick="abrirProvisoes()" style="display:none;">📌 Provisões</button>
 
 <div id="orcamentoModal" class="modal-overlay" onclick="if(event.target===this) fecharOrcamento()">
   <div class="modal-card" style="max-width:420px;">
@@ -158,6 +162,52 @@
   </div>
 </div>
 
+<div id="provisoesModal" class="modal-overlay" onclick="if(event.target===this) fecharProvisoes()">
+  <div class="modal-card" style="max-width:480px;">
+    <div class="modal-header">
+      <h3>Provisões (receitas/despesas futuras)</h3>
+      <button class="secondary small" onclick="fecharProvisoes()">Fechar</button>
+    </div>
+    <div class="hint" style="margin-bottom:12px;">Cadastre já receitas e despesas esperadas para os próximos meses. Quando chegar a hora, use "Lançar agora" para transformar em um lançamento real.</div>
+    <div class="month-filter">
+      <label style="color:var(--muted); font-size:0.85rem;">Mês da provisão:</label>
+      <input type="month" id="provisaoMesInput" onchange="renderProvisoes()">
+    </div>
+    <form class="inline" id="provisaoForm">
+      <div class="field">
+        <label>Tipo</label>
+        <select id="provisaoTipo">
+          <option value="receita">Receita</option>
+          <option value="despesa">Despesa</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Categoria</label>
+        <select id="provisaoCategoria"></select>
+      </div>
+      <div class="field">
+        <label>Valor (R$)</label>
+        <input type="number" step="0.01" min="0" id="provisaoValor" placeholder="0,00">
+      </div>
+      <div class="field" style="min-width:140px;">
+        <label>Descrição</label>
+        <input type="text" id="provisaoDescricao" placeholder="opcional">
+      </div>
+      <button type="submit">Adicionar</button>
+    </form>
+    <div class="totals-line" style="margin-top:14px;">
+      <span>Receita prevista</span><span class="pos" id="provisaoTotalReceita">R$ 0,00</span>
+    </div>
+    <div class="totals-line" style="border-top:none; margin-top:0; padding-top:0;">
+      <span>Despesa prevista</span><span class="neg" id="provisaoTotalDespesa">R$ 0,00</span>
+    </div>
+    <div class="totals-line" style="margin-bottom:14px;">
+      <span>Resultado previsto</span><span id="provisaoResultado">R$ 0,00</span>
+    </div>
+    <div id="provisoesList"></div>
+  </div>
+</div>
+
 <div id="appScreen" style="display:none;">
 
 <div class="header-block">
@@ -173,7 +223,7 @@
 
 <div class="panel row-gap">
   <h2><span class="title">➕ Lançamentos</span></h2>
-  <div class="hint" style="margin-bottom:10px;">Escolha o tipo para liberar os campos certos: Receita, Despesa, Cartão de Crédito, Dívida, Conta Corrente ou Investimento. Receita soma e Despesa desconta automaticamente do saldo da conta corrente. O tipo Cartão de Crédito serve só para acompanhar a fatura de cada cartão (não mexe no saldo) — quando pagar, lance como Despesa na categoria "Cartão de Crédito". Use o botão roxo "Orçamento" no canto superior esquerdo para controlar quanto pode gastar por categoria.</div>
+  <div class="hint" style="margin-bottom:10px;">Escolha o tipo para liberar os campos certos: Receita, Despesa, Cartão de Crédito, Dívida, Conta Corrente ou Investimento. Receita soma e Despesa desconta automaticamente do saldo da conta corrente. O tipo Cartão de Crédito serve só para acompanhar a fatura de cada cartão (não mexe no saldo) — quando pagar, lance como Despesa na categoria "Cartão de Crédito". Use os botões roxos no canto superior esquerdo: "Orçamento" para controlar quanto pode gastar por categoria, e "Provisões" para já deixar planejadas receitas/despesas dos próximos meses.</div>
   <form class="inline" id="lancForm">
     <div class="field">
       <label>Data</label>
@@ -359,19 +409,23 @@ function showLoading(){
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('appScreen').style.display = 'none';
   document.getElementById('orcamentoIconBtn').style.display = 'none';
+  document.getElementById('provisoesIconBtn').style.display = 'none';
 }
 function showLogin(){
   document.getElementById('loadingScreen').style.display = 'none';
   document.getElementById('loginScreen').style.display = 'flex';
   document.getElementById('appScreen').style.display = 'none';
   document.getElementById('orcamentoIconBtn').style.display = 'none';
+  document.getElementById('provisoesIconBtn').style.display = 'none';
   fecharOrcamento();
+  fecharProvisoes();
 }
 function showApp(){
   document.getElementById('loadingScreen').style.display = 'none';
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('appScreen').style.display = 'block';
   document.getElementById('orcamentoIconBtn').style.display = 'flex';
+  document.getElementById('provisoesIconBtn').style.display = 'flex';
 }
 
 auth.onAuthStateChanged(function(user){
@@ -386,8 +440,9 @@ auth.onAuthStateChanged(function(user){
         if(!data.categoriasReceita) data.categoriasReceita = [];
         if(!data.categoriasDespesa) data.categoriasDespesa = [];
         if(!data.orcamentos) data.orcamentos = {};
+        if(!data.provisoes) data.provisoes = [];
       } else {
-        let initial = { lancamentos: [], categoriasReceita: [], categoriasDespesa: [], orcamentos: {} };
+        let initial = { lancamentos: [], categoriasReceita: [], categoriasDespesa: [], orcamentos: {}, provisoes: [] };
         const localRaw = localStorage.getItem(OLD_LOCAL_KEY);
         if(localRaw){
           try{ const parsed = JSON.parse(localRaw); if(parsed && parsed.lancamentos) initial = Object.assign(initial, parsed); }catch(e){}
@@ -401,7 +456,7 @@ auth.onAuthStateChanged(function(user){
       document.getElementById('loginError').textContent = 'Erro ao carregar dados: ' + err.message;
     });
   } else {
-    data = { lancamentos: [], categoriasReceita: [], categoriasDespesa: [], orcamentos: {} };
+    data = { lancamentos: [], categoriasReceita: [], categoriasDespesa: [], orcamentos: {}, provisoes: [] };
     showLogin();
   }
 });
@@ -449,7 +504,15 @@ function addOneMonth(dateStr){
   return `${newYear}-${String(newMonth).padStart(2,'0')}-${String(newDay).padStart(2,'0')}`;
 }
 
-let data = { lancamentos: [], categoriasReceita: [], categoriasDespesa: [], orcamentos: {} };
+function nextMonthKeyFromToday(){
+  const today = new Date();
+  let y = today.getFullYear();
+  let m = today.getMonth() + 2; // getMonth() é 0-indexado (mês atual) + 2 = próximo mês em 1-indexado
+  if(m > 12){ m -= 12; y += 1; }
+  return `${y}-${String(m).padStart(2,'0')}`;
+}
+
+let data = { lancamentos: [], categoriasReceita: [], categoriasDespesa: [], orcamentos: {}, provisoes: [] };
 let charts = {};
 let editingId = null;
 let razaoAtualKey = null;
@@ -480,13 +543,16 @@ function categoriasBaseParaTipo(tipo){
 function categoriasExtrasParaTipo(tipo){
   return tipo === 'receita' ? (data.categoriasReceita||[]) : (data.categoriasDespesa||[]);
 }
+function listaCategoriasParaTipo(tipo){
+  const base = categoriasBaseParaTipo(tipo);
+  const extras = categoriasExtrasParaTipo(tipo);
+  return base.concat(extras.filter(c => !base.includes(c)));
+}
 
 function populateCategoriaSelect(){
   const tipo = document.getElementById('lancTipo').value;
   const sel = document.getElementById('lancCategoria');
-  const base = categoriasBaseParaTipo(tipo);
-  const extras = categoriasExtrasParaTipo(tipo);
-  const lista = base.concat(extras.filter(c => !base.includes(c)));
+  const lista = listaCategoriasParaTipo(tipo);
   const valorAtual = sel.value;
   sel.innerHTML = lista.map(c => `<option value="${c}">${c}</option>`).join('');
   if(lista.includes(valorAtual)) sel.value = valorAtual;
@@ -665,6 +731,115 @@ function renderOrcamento(){
     `;
   }).join('');
 }
+
+// ---------- Provisões (receitas/despesas futuras) ----------
+function abrirProvisoes(){
+  document.getElementById('provisoesModal').style.display = 'flex';
+  if(!document.getElementById('provisaoMesInput').value){
+    document.getElementById('provisaoMesInput').value = nextMonthKeyFromToday();
+  }
+  populateProvisaoCategoriaSelect();
+  renderProvisoes();
+}
+function fecharProvisoes(){
+  document.getElementById('provisoesModal').style.display = 'none';
+}
+
+function populateProvisaoCategoriaSelect(){
+  const tipo = document.getElementById('provisaoTipo').value;
+  const sel = document.getElementById('provisaoCategoria');
+  const valorAtual = sel.value;
+  const lista = listaCategoriasParaTipo(tipo);
+  sel.innerHTML = lista.map(c => `<option value="${c}">${c}</option>`).join('');
+  if(lista.includes(valorAtual)) sel.value = valorAtual;
+}
+
+function renderProvisoes(){
+  const mes = document.getElementById('provisaoMesInput').value;
+  if(!data.provisoes) data.provisoes = [];
+  const itens = data.provisoes.filter(p => p.mes === mes);
+
+  const totalReceita = itens.filter(p=>p.tipo==='receita').reduce((s,p)=>s+Number(p.valor),0);
+  const totalDespesa = itens.filter(p=>p.tipo==='despesa').reduce((s,p)=>s+Number(p.valor),0);
+  document.getElementById('provisaoTotalReceita').textContent = fmt(totalReceita);
+  document.getElementById('provisaoTotalDespesa').textContent = fmt(totalDespesa);
+  const resultado = totalReceita - totalDespesa;
+  const resEl = document.getElementById('provisaoResultado');
+  resEl.textContent = fmt(resultado);
+  resEl.className = resultado >= 0 ? 'pos' : 'neg';
+
+  const list = document.getElementById('provisoesList');
+  if(itens.length === 0){
+    list.innerHTML = '<div class="empty">Nenhuma provisão para este mês.</div>';
+    return;
+  }
+  const ordenados = itens.slice().sort((a,b) => a.tipo === b.tipo ? 0 : (a.tipo === 'receita' ? -1 : 1));
+  list.innerHTML = ordenados.map(p => {
+    const tag = p.tipo === 'receita' ? {label:'Receita', cls:'receita'} : {label:'Despesa', cls:'despesa'};
+    const cor = p.tipo === 'receita' ? 'pos' : 'neg';
+    return `
+      <div class="list-item">
+        <div>
+          <div><span class="tag ${tag.cls}">${tag.label}</span> ${p.categoria}</div>
+          <div class="meta">${p.descricao || '-'}</div>
+        </div>
+        <div class="actions">
+          <span class="${cor}" style="margin-right:6px;">${fmt(p.valor)}</span>
+          <button class="baixa" onclick="lancarProvisaoAgora('${p.id}')">Lançar agora</button>
+          <button class="danger" onclick="excluirProvisao('${p.id}')">x</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function excluirProvisao(id){
+  data.provisoes = (data.provisoes||[]).filter(p => p.id !== id);
+  saveData();
+  renderProvisoes();
+}
+
+function lancarProvisaoAgora(id){
+  const p = (data.provisoes||[]).find(x => x.id === id);
+  if(!p) return;
+  const hojeISO = new Date().toISOString().slice(0,10);
+  const dataFinal = hojeISO.slice(0,7) === p.mes ? hojeISO : (p.mes + '-01');
+  data.lancamentos.push({
+    id: uid(),
+    data: dataFinal,
+    tipo: p.tipo,
+    categoria: p.categoria,
+    valor: Number(p.valor),
+    descricao: (p.descricao ? p.descricao + ' ' : '') + '(provisão)',
+    limite: null, vencimento: null, parcelas: null, tipoInvestimento: null, nome: null
+  });
+  data.provisoes = data.provisoes.filter(x => x.id !== id);
+  saveData();
+  renderAll();
+  renderProvisoes();
+}
+
+document.getElementById('provisaoTipo').addEventListener('change', populateProvisaoCategoriaSelect);
+document.getElementById('provisaoForm').addEventListener('submit', function(e){
+  e.preventDefault();
+  const mes = document.getElementById('provisaoMesInput').value;
+  if(!mes) return;
+  const valor = parseFloat(document.getElementById('provisaoValor').value) || 0;
+  if(valor <= 0) return;
+  if(!data.provisoes) data.provisoes = [];
+  data.provisoes.push({
+    id: uid(),
+    mes,
+    tipo: document.getElementById('provisaoTipo').value,
+    categoria: document.getElementById('provisaoCategoria').value,
+    valor,
+    descricao: document.getElementById('provisaoDescricao').value.trim()
+  });
+  saveData();
+  document.getElementById('provisaoValor').value = '';
+  document.getElementById('provisaoDescricao').value = '';
+  renderProvisoes();
+});
 
 function renderAll(){
   renderSummary();
@@ -1216,6 +1391,7 @@ document.getElementById('lancForm').addEventListener('submit', function(e){
   document.getElementById('lancData').value = isoDate;
   document.getElementById('filtroMes').value = monthKey;
   updateFormFieldsVisibility('receita');
+  populateProvisaoCategoriaSelect();
 })();
 </script>
 </body>
