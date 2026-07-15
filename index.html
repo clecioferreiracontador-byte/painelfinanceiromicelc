@@ -250,7 +250,7 @@
 
 <div class="panel row-gap">
   <h2><span class="title">➕ Lançamentos</span></h2>
-  <div class="hint" style="margin-bottom:10px;">Escolha o tipo para liberar os campos certos: Receita, Despesa, Cartão de Crédito, Dívida, Conta Corrente ou Investimento. Receita soma e Despesa desconta automaticamente do saldo da conta corrente. O tipo Cartão de Crédito serve só para acompanhar a fatura de cada cartão (não mexe no saldo) — quando pagar, lance como Despesa na categoria "Cartão de Crédito". Use os botões no canto superior esquerdo: "Orçamento" para controlar quanto pode gastar por categoria, e "Provisões" para já deixar planejadas receitas/despesas dos próximos meses (inclusive recorrentes). Ao lado da categoria, use "+" para criar uma nova e "−" para excluir a categoria selecionada.</div>
+  <div class="hint" style="margin-bottom:10px;">Escolha o tipo para liberar os campos certos: Receita, Despesa, Cartão de Crédito, Dívida, Conta Corrente ou Investimento. Receita soma e Despesa desconta automaticamente do saldo da conta corrente. O tipo Cartão de Crédito serve só para acompanhar a fatura de cada cartão (não mexe no saldo). Ao pagar a fatura, lance como Despesa na categoria "Cartão de Crédito" e informe o nome do cartão: o saldo em aberto daquele cartão é baixado automaticamente pelo valor pago. Use os botões no canto superior esquerdo: "Orçamento" para controlar quanto pode gastar por categoria, e "Provisões" para já deixar planejadas receitas/despesas dos próximos meses (inclusive recorrentes). Ao lado da categoria, use "+" para criar uma nova e "−" para excluir a categoria selecionada.</div>
   <form class="inline" id="lancForm">
     <div class="field">
       <label>Data</label>
@@ -268,8 +268,9 @@
       </select>
     </div>
     <div class="field" id="fieldCartaoNome">
-      <label>Nome do cartão</label>
-      <input type="text" id="lancCartaoNome" placeholder="ex: Nubank, Inter...">
+      <label id="lancCartaoNomeLabel">Nome do cartão</label>
+      <input type="text" id="lancCartaoNome" placeholder="ex: Nubank, Inter..." list="cartoesDatalist">
+      <datalist id="cartoesDatalist"></datalist>
     </div>
     <div class="field" id="fieldCategoria">
       <label>Categoria</label>
@@ -360,7 +361,7 @@
   <div class="panel">
     <h2><span class="title">💳 Cartões de Crédito</span><button class="secondary small" onclick="novoLancamento('cartao')">+ Novo lançamento</button></h2>
     <div id="cartoesList"></div>
-    <div class="totals-line"><span>Fatura total (todos os cartões)</span><span id="cartoesTotal" class="blur-target">R$ 0,00</span></div>
+    <div class="totals-line"><span>Fatura total em aberto (todos os cartões)</span><span id="cartoesTotal" class="blur-target">R$ 0,00</span></div>
   </div>
 </div>
 
@@ -684,10 +685,19 @@ function excluirCategoria(){
   populateCategoriaSelect();
 }
 
+// O campo "Nome do cartão" aparece tanto para lançamentos tipo Cartão de Crédito (compras)
+// quanto para Despesa na categoria "Cartão de Crédito" (pagamento de fatura) — nesse segundo
+// caso é ele que permite abater o valor pago do saldo em aberto daquele cartão.
+function despesaEhPagamentoCartao(){
+  return document.getElementById('lancTipo').value === 'despesa' &&
+    document.getElementById('lancCategoria').value === 'Cartão de Crédito';
+}
+
 function updateFormFieldsVisibility(tipo){
+  const mostrarCartaoNome = tipo === 'cartao' || despesaEhPagamentoCartao();
   const map = {
     fieldCategoria: tipo === 'receita' || tipo === 'despesa' || tipo === 'cartao',
-    fieldCartaoNome: tipo === 'cartao',
+    fieldCartaoNome: mostrarCartaoNome,
     fieldLimite: tipo === 'cartao',
     fieldVencimento: tipo === 'cartao' || tipo === 'divida',
     fieldParcelas: tipo === 'divida',
@@ -696,6 +706,9 @@ function updateFormFieldsVisibility(tipo){
   Object.keys(map).forEach(id => {
     document.getElementById(id).style.display = map[id] ? 'flex' : 'none';
   });
+  document.getElementById('lancCartaoNomeLabel').textContent = tipo === 'cartao'
+    ? 'Nome do cartão'
+    : 'Cartão que está pagando';
   if(tipo === 'receita' || tipo === 'despesa' || tipo === 'cartao') populateCategoriaSelect();
 }
 
@@ -735,25 +748,40 @@ function calcularSaldoContaCorrente(){
   return { saldo: baselineValor + somaMovimentos, baseline, movimentos };
 }
 
-// Cartões: agrupa lançamentos tipo cartao por nome. Valores com o mesmo nome se somam (cada lançamento é uma compra/lançamento na fatura).
-// Limite e vencimento exibidos vêm do lançamento mais recente daquele cartão.
+// Cartões: agrupa lançamentos tipo cartao por nome (compras) e cruza com despesas
+// lançadas na categoria "Cartão de Crédito" com o mesmo nome (pagamentos de fatura).
+// O "total" retornado é o saldo em aberto = total comprado - total pago naquele cartão.
 function cartoesAgrupados(){
-  const itens = data.lancamentos.filter(l => l.tipo === 'cartao');
-  const nomes = [...new Set(itens.map(l => l.nome || 'Cartão'))];
+  const compras = data.lancamentos.filter(l => l.tipo === 'cartao');
+  const pagamentos = data.lancamentos.filter(l => l.tipo === 'despesa' && l.categoria === 'Cartão de Crédito' && l.nome);
+  const nomes = [...new Set(compras.map(l => l.nome || 'Cartão').concat(pagamentos.map(l => l.nome)))];
   return nomes.map(nome => {
-    const doNome = itens.filter(l => (l.nome || 'Cartão') === nome);
-    const maisRecente = doNome.reduce((a,b) => (b.data >= a.data ? b : a));
-    const total = doNome.reduce((s,l) => s + Number(l.valor), 0);
+    const comprasDoNome = compras.filter(l => (l.nome || 'Cartão') === nome);
+    const pagamentosDoNome = pagamentos.filter(l => l.nome === nome);
+    const totalComprado = comprasDoNome.reduce((s,l)=>s+Number(l.valor),0);
+    const totalPago = pagamentosDoNome.reduce((s,l)=>s+Number(l.valor),0);
+    const saldoAberto = totalComprado - totalPago;
+    const maisRecenteCompra = comprasDoNome.length ? comprasDoNome.reduce((a,b)=>(b.data>=a.data?b:a)) : null;
+    const maisRecentePagamento = pagamentosDoNome.length ? pagamentosDoNome.reduce((a,b)=>(b.data>=a.data?b:a)) : null;
     return {
       nome,
-      total,
-      limite: maisRecente.limite,
-      vencimento: maisRecente.vencimento,
-      dataUltimoLancamento: maisRecente.data,
-      latestId: maisRecente.id,
-      qtdLancamentos: doNome.length
+      total: saldoAberto,
+      totalComprado,
+      totalPago,
+      limite: maisRecenteCompra ? maisRecenteCompra.limite : null,
+      vencimento: maisRecenteCompra ? maisRecenteCompra.vencimento : null,
+      dataUltimoLancamento: maisRecenteCompra ? maisRecenteCompra.data : (maisRecentePagamento ? maisRecentePagamento.data : null),
+      latestId: maisRecenteCompra ? maisRecenteCompra.id : null,
+      qtdLancamentos: comprasDoNome.length
     };
   }).sort((a,b) => a.nome.localeCompare(b.nome));
+}
+
+function populateCartoesDatalist(){
+  const datalist = document.getElementById('cartoesDatalist');
+  if(!datalist) return;
+  const nomes = cartoesAgrupados().map(c => c.nome);
+  datalist.innerHTML = nomes.map(n => `<option value="${n}"></option>`).join('');
 }
 
 // ---------- Orçamento do Mês ----------
@@ -1115,7 +1143,7 @@ function renderSummary(){
     {key:'receitaMes', label:'Receitas do Mês', value: fmt(receitaMes), cls:'pos'},
     {key:'despesaMes', label:'Despesas do Mês', value: fmt(despesaMes), cls:'neg'},
     {key:'resultadoMes', label:'Resultado do Mês', value: fmt(resultado), cls: resultado>=0?'pos':'neg'},
-    {key:'cartao', label:'Fatura Cartão', value: fmt(faturaTotal), cls:'warn'},
+    {key:'cartao', label:'Fatura Cartão (em aberto)', value: fmt(faturaTotal), cls:'warn'},
     {key:'investimento', label:'Total Investido', value: fmt(totalInvest), cls:'pos'},
     {key:'divida', label:'Total em Dívidas', value: fmt(totalDividas), cls:'neg'},
   ];
@@ -1128,7 +1156,13 @@ function renderSummary(){
 }
 
 function detalheFor(item){
-  if(item.tipo === 'receita' || item.tipo === 'despesa') return item.categoria || '-';
+  if(item.tipo === 'receita' || item.tipo === 'despesa'){
+    let base = item.categoria || '-';
+    if(item.tipo === 'despesa' && item.categoria === 'Cartão de Crédito' && item.nome){
+      base += ' (' + item.nome + ')';
+    }
+    return base;
+  }
   if(item.tipo === 'cartao'){
     const partes = [item.nome || 'Cartão'];
     if(item.categoria) partes.push(item.categoria);
@@ -1201,10 +1235,10 @@ function editLancamento(id){
   editingId = id;
   document.getElementById('lancData').value = item.data;
   document.getElementById('lancTipo').value = item.tipo;
-  updateFormFieldsVisibility(item.tipo);
   if(item.tipo === 'receita' || item.tipo === 'despesa' || item.tipo === 'cartao'){
     document.getElementById('lancCategoria').value = item.categoria || '';
   }
+  updateFormFieldsVisibility(item.tipo);
   document.getElementById('lancValor').value = item.valor;
   document.getElementById('lancDescricao').value = item.descricao || '';
   document.getElementById('lancCartaoNome').value = item.nome || '';
@@ -1285,10 +1319,10 @@ function getRazaoConfig(key){
     total = calc.saldo;
     totalLabel = 'Saldo atual (calculado)';
   } else if(key === 'cartao'){
-    itens = data.lancamentos.filter(l=>l.tipo==='cartao');
-    titulo = 'Razão — Cartões de Crédito (todos os lançamentos)';
+    itens = data.lancamentos.filter(l => l.tipo==='cartao' || (l.tipo==='despesa' && l.categoria === 'Cartão de Crédito'));
+    titulo = 'Razão — Cartões de Crédito (compras e pagamentos de fatura)';
     total = cartoesAgrupados().reduce((s,c)=>s+Number(c.total),0);
-    totalLabel = 'Fatura total (todos os cartões)';
+    totalLabel = 'Fatura total em aberto (todos os cartões)';
   } else if(key === 'divida'){
     itens = data.lancamentos.filter(l=>l.tipo==='divida');
     titulo = 'Razão — Dívidas';
@@ -1347,7 +1381,7 @@ function renderRazaoContent(){
       resumoEl.innerHTML = '<div style="margin-bottom:10px;">' +
         cartoes.map(c => `
           <div class="list-item">
-            <div>${c.nome} <span class="hint">(${c.qtdLancamentos} lançamento${c.qtdLancamentos>1?'s':''})</span></div>
+            <div>${c.nome} <span class="hint">(comprado ${fmt(c.totalComprado)} • pago ${fmt(c.totalPago)})</span></div>
             <span class="warn">${fmt(c.total)}</span>
           </div>
         `).join('') + '</div>';
@@ -1567,14 +1601,17 @@ function renderContaPanel(){
 function renderCartoesPanel(){
   const list = document.getElementById('cartoesList');
   const cartoes = cartoesAgrupados();
+  populateCartoesDatalist();
   if(cartoes.length === 0){
     list.innerHTML = '<div class="empty">Nenhum cartão cadastrado.</div>';
   } else {
     list.innerHTML = cartoes.map(c => {
       const uso = c.limite ? ((c.total / c.limite) * 100).toFixed(1) : null;
-      const metaPartes = [c.qtdLancamentos + ' lançamento' + (c.qtdLancamentos>1?'s':'')];
+      const metaPartes = [c.qtdLancamentos + ' compra' + (c.qtdLancamentos===1?'':'s')];
       if(c.limite) metaPartes.push('Limite ' + fmt(c.limite) + (uso!==null ? ` (uso ${uso}%)` : ''));
       if(c.vencimento) metaPartes.push('Vence ' + fmtDate(c.vencimento));
+      if(c.totalPago > 0) metaPartes.push('Pago ' + fmt(c.totalPago));
+      const btnEditar = c.latestId ? `<button class="edit" onclick="editLancamento('${c.latestId}')">Editar</button>` : '';
       return `
       <div class="list-item">
         <div>
@@ -1583,7 +1620,7 @@ function renderCartoesPanel(){
         </div>
         <div class="actions">
           <span class="warn" style="margin-right:6px;">${fmt(c.total)}</span>
-          <button class="edit" onclick="editLancamento('${c.latestId}')">Editar</button>
+          ${btnEditar}
         </div>
       </div>
     `;
@@ -1597,20 +1634,25 @@ function renderCartoesPanel(){
 document.getElementById('lancTipo').addEventListener('change', function(){
   updateFormFieldsVisibility(this.value);
 });
+document.getElementById('lancCategoria').addEventListener('change', function(){
+  updateFormFieldsVisibility(document.getElementById('lancTipo').value);
+});
 document.getElementById('lancCancelBtn').addEventListener('click', cancelEdit);
 document.getElementById('filtroMes').addEventListener('change', renderAll);
 
 document.getElementById('lancForm').addEventListener('submit', function(e){
   e.preventDefault();
   const tipo = document.getElementById('lancTipo').value;
+  const categoria = (tipo === 'receita' || tipo === 'despesa' || tipo === 'cartao') ? document.getElementById('lancCategoria').value : null;
+  const usaCartaoNome = tipo === 'cartao' || (tipo === 'despesa' && categoria === 'Cartão de Crédito');
   const entry = {
     id: editingId || uid(),
     data: document.getElementById('lancData').value,
     tipo,
-    categoria: (tipo === 'receita' || tipo === 'despesa' || tipo === 'cartao') ? document.getElementById('lancCategoria').value : null,
+    categoria,
     valor: parseFloat(document.getElementById('lancValor').value) || 0,
     descricao: document.getElementById('lancDescricao').value.trim(),
-    nome: tipo === 'cartao' ? (document.getElementById('lancCartaoNome').value.trim() || 'Cartão') : null,
+    nome: usaCartaoNome ? (document.getElementById('lancCartaoNome').value.trim() || null) : null,
     limite: tipo === 'cartao' ? (parseFloat(document.getElementById('lancLimite').value) || 0) : null,
     vencimento: (tipo === 'cartao' || tipo === 'divida') ? document.getElementById('lancVencimento').value : null,
     parcelas: tipo === 'divida' ? (parseInt(document.getElementById('lancParcelas').value) || null) : null,
