@@ -77,10 +77,11 @@
   .quitada-tag{background:rgba(34,197,94,0.15); color:var(--green); padding:2px 8px; border-radius:20px; font-size:0.72rem; font-weight:600;}
   .recorrente-tag{background:rgba(59,130,246,0.15); color:var(--blue); padding:2px 8px; border-radius:20px; font-size:0.7rem; font-weight:600;}
   .banco-badge{
-    display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px;
-    border-radius:50%; background:var(--card2); border:1px solid var(--border); color:var(--muted);
-    font-size:0.6rem; font-weight:700; letter-spacing:.01em; margin-right:6px; flex-shrink:0; vertical-align:middle;
+    display:inline-flex; align-items:center; justify-content:center; height:22px; max-width:56px;
+    border-radius:6px; background:#ffffff; border:1px solid var(--border); padding:2px 6px;
+    margin-right:6px; flex-shrink:0; vertical-align:middle; overflow:hidden;
   }
+  .banco-badge img{ display:block; height:100%; width:auto; max-width:100%; object-fit:contain; }
 
   table{width:100%; border-collapse:collapse; font-size:0.85rem;}
   th,td{text-align:left; padding:8px 6px; border-bottom:1px solid var(--border);}
@@ -525,7 +526,7 @@
   </h2>
   <div class="panel-body">
   <div id="cartoesList"></div>
-  <div class="totals-line"><span>Fatura total em aberto (todos os cartões)</span><span id="cartoesTotal" class="blur-target">R$ 0,00</span></div>
+  <div class="totals-line"><span>Faturas em aberto</span><span id="cartoesTotal" class="blur-target">R$ 0,00</span></div>
   </div>
 </div>
 
@@ -1410,25 +1411,25 @@ const TAG_INFO = {
   investimento: {label:'Pé de Meia', cls:'investimento'}
 };
 
-// Emblemas monocromáticos (iniciais) para os bancos mais comuns — não reproduzem a marca oficial
-// de cada banco (evita depender de logotipos de terceiros), só ajudam a identificar rapidinho o
-// banco pelo nome digitado no cartão/conta.
+// Logos dos bancos mais comuns (baixadas do Wikimedia Commons, ver icons/bancos/), mostradas ao
+// lado do nome quando o texto digitado no cartão/conta bate com um desses bancos.
 const BANCOS_CONHECIDOS = [
-  { chave: 'caixa', sigla: 'CX' },
-  { chave: 'nubank', sigla: 'NU' },
-  { chave: 'inter', sigla: 'IN' },
-  { chave: 'santander', sigla: 'SA' },
-  { chave: 'itau', sigla: 'IT' },
-  { chave: 'itaú', sigla: 'IT' },
-  { chave: 'mercado pago', sigla: 'MP' },
-  { chave: 'mercadopago', sigla: 'MP' }
+  { chave: 'caixa', arquivo: 'caixa.png' },
+  { chave: 'cef', arquivo: 'caixa.png' },
+  { chave: 'nubank', arquivo: 'nubank.png' },
+  { chave: 'inter', arquivo: 'inter.png' },
+  { chave: 'santander', arquivo: 'santander.png' },
+  { chave: 'itau', arquivo: 'itau.png' },
+  { chave: 'itaú', arquivo: 'itau.png' },
+  { chave: 'mercado pago', arquivo: 'mercadopago.png' },
+  { chave: 'mercadopago', arquivo: 'mercadopago.png' }
 ];
 
 function iconeBancoHtml(nome){
   const nomeNormalizado = (nome || '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   const banco = BANCOS_CONHECIDOS.find(b => nomeNormalizado.includes(b.chave.normalize('NFD').replace(/[\u0300-\u036f]/g, '')));
   if(!banco) return '';
-  return `<span class="banco-badge" title="${nome}">${banco.sigla}</span>`;
+  return `<span class="banco-badge" title="${nome}"><img src="icons/bancos/${banco.arquivo}" alt="${nome}"></span>`;
 }
 
 function categoriasBaseParaTipo(tipo){
@@ -2348,7 +2349,7 @@ function getRazaoConfig(key){
     itens = data.lancamentos.filter(l => l.tipo==='cartao' || (l.tipo==='despesa' && l.categoria === 'Cartão de Crédito'));
     titulo = 'Razão — Cartões de Crédito (compras e pagamentos de fatura)';
     total = cartoesAgrupados().reduce((s,c)=>s+Number(c.total),0);
-    totalLabel = 'Fatura total em aberto (todos os cartões)';
+    totalLabel = 'Faturas em aberto';
   } else if(key === 'divida'){
     itens = data.lancamentos.filter(l=>l.tipo==='divida');
     titulo = 'Razão — Dívidas';
