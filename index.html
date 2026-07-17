@@ -228,11 +228,12 @@
     .card{ padding:12px; }
     .card .label{ font-size:0.7rem; }
     .card .value{ font-size:1.1rem; }
-    .cards{ gap:10px; margin-bottom:18px; grid-template-columns:1fr; }
+    .cards{ gap:10px; margin-bottom:18px; }
 
-    /* Home do celular: só mostra o Saldo em Conta Corrente entre os cards de resumo */
+    /* Home do celular: só mostra o Saldo em Conta Corrente entre os cards de resumo, centralizado */
+    #summaryCards{ display:flex; justify-content:center; }
     #summaryCards .card{ display:none; }
-    #summaryCards .card[data-key="conta"]{ display:block; }
+    #summaryCards .card[data-key="conta"]{ display:block; width:100%; max-width:300px; text-align:center; }
 
     .grid2{ gap:12px; margin-bottom:16px; }
     .row-gap{ margin-bottom:16px; }
@@ -659,12 +660,47 @@
 </div>
 
 <div id="extratosModal" class="page-view">
-  <div class="modal-card view-card" style="max-width:420px;">
+  <div class="modal-card view-card" style="max-width:760px;">
     <div class="modal-header">
       <h3>Extratos</h3>
       <button class="secondary small" onclick="irHome()">Voltar</button>
     </div>
-    <div class="hint">Em breve você vai poder importar extratos bancários aqui, sem precisar lançar tudo manualmente.</div>
+    <div class="hint" style="margin-bottom:14px;">Importe um arquivo OFX ou CSV exportado do app do seu banco (extrato de conta corrente/poupança ou fatura de cartão) para lançar tudo de uma vez, sem digitar manualmente. Todos os itens vêm com a categoria "Outros" — edite depois quem precisar de outra categoria.</div>
+
+    <form class="inline" id="extratoForm" onsubmit="return false;">
+      <div class="field">
+        <label>Tipo de extrato</label>
+        <select id="extratoTipo" onchange="atualizarCamposExtrato()">
+          <option value="conta">Conta Corrente / Poupança</option>
+          <option value="cartao">Fatura de Cartão de Crédito</option>
+        </select>
+      </div>
+      <div class="field" id="fieldExtratoCartaoNome" style="display:none;">
+        <label>Nome do cartão</label>
+        <input type="text" id="extratoCartaoNome" placeholder="ex: Nubank, Inter..." list="cartoesDatalist">
+      </div>
+      <div class="field" style="min-width:220px;">
+        <label>Arquivo (.ofx ou .csv)</label>
+        <input type="file" id="extratoArquivo" accept=".ofx,.qfx,.csv,.txt" onchange="processarArquivoExtrato(event)">
+      </div>
+    </form>
+
+    <div class="hint" id="extratoErro" style="margin-top:4px;"></div>
+
+    <div id="extratoPreviewWrap" style="display:none; margin-top:14px;">
+      <div class="month-filter">
+        <span class="hint" id="extratoResumo"></span>
+        <button type="button" class="secondary small" onclick="selecionarTodosExtrato(true)" style="margin-left:auto;">Marcar todos</button>
+        <button type="button" class="secondary small" onclick="selecionarTodosExtrato(false)">Desmarcar todos</button>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th></th><th>Data</th><th>Descrição</th><th>Valor</th><th>Tipo</th></tr></thead>
+          <tbody id="extratoPreviewBody"></tbody>
+        </table>
+      </div>
+      <button type="button" onclick="importarExtratoSelecionados()" style="margin-top:14px;">Importar selecionados</button>
+    </div>
   </div>
 </div>
 
@@ -816,9 +852,237 @@ function fecharLancamentos(){
 
 function abrirExtratos(){
   mostrarView('extratosModal');
+  resetExtratoForm();
 }
 function fecharExtratos(){
   mostrarView('homeView');
+}
+
+// ---------- Importar extratos (OFX / CSV) de conta corrente, poupança ou fatura de cartão ----------
+let extratoParsed = [];
+
+function resetExtratoForm(){
+  extratoParsed = [];
+  document.getElementById('extratoArquivo').value = '';
+  document.getElementById('extratoPreviewWrap').style.display = 'none';
+  document.getElementById('extratoErro').textContent = '';
+  document.getElementById('extratoTipo').value = 'conta';
+  document.getElementById('extratoCartaoNome').value = '';
+  atualizarCamposExtrato();
+}
+
+function atualizarCamposExtrato(){
+  const tipo = document.getElementById('extratoTipo').value;
+  document.getElementById('fieldExtratoCartaoNome').style.display = tipo === 'cartao' ? 'flex' : 'none';
+}
+
+function normalizarTextoExtrato(s){
+  return (s || '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+}
+
+// Aceita "1.234,56", "-150,00" (padrão BR) e "150.00" (padrão US).
+function parseValorMonetarioExtrato(str){
+  let s = (str || '').toString().replace(/[^\d,.\-]/g, '');
+  if(s.includes(',') && s.includes('.')){
+    s = s.replace(/\./g, '').replace(',', '.');
+  } else if(s.includes(',')){
+    s = s.replace(',', '.');
+  }
+  return parseFloat(s) || 0;
+}
+
+function parseDataGenericaExtrato(str){
+  const s = (str || '').trim();
+  let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(m) return `${m[1]}-${m[2]}-${m[3]}`;
+  m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+  if(m) return `${m[3]}-${m[2]}-${m[1]}`;
+  m = s.match(/^(\d{2})-(\d{2})-(\d{4})/);
+  if(m) return `${m[3]}-${m[2]}-${m[1]}`;
+  return '';
+}
+
+// Divide uma linha de CSV respeitando campos entre aspas (que podem conter o próprio separador).
+function splitLinhaCSV(linha, delim){
+  const resultado = [];
+  let atual = '';
+  let dentroAspas = false;
+  for(let i = 0; i < linha.length; i++){
+    const c = linha[i];
+    if(c === '"'){
+      dentroAspas = !dentroAspas;
+    } else if(c === delim && !dentroAspas){
+      resultado.push(atual);
+      atual = '';
+    } else {
+      atual += c;
+    }
+  }
+  resultado.push(atual);
+  return resultado.map(s => s.replace(/^"|"$/g, '').trim());
+}
+
+// Extrai os lançamentos (<STMTTRN>) de um arquivo OFX (formato usado pela maioria dos bancos).
+function parseOFXExtrato(texto){
+  const blocos = texto.match(/<STMTTRN>[\s\S]*?<\/STMTTRN>/gi) || [];
+  return blocos.map(bloco => {
+    const pegar = (tag) => {
+      const m = bloco.match(new RegExp('<' + tag + '>([^<\\r\\n]*)', 'i'));
+      return m ? m[1].trim() : '';
+    };
+    const dataBruta = pegar('DTPOSTED');
+    const ano = dataBruta.slice(0,4), mes = dataBruta.slice(4,6), dia = dataBruta.slice(6,8);
+    const data = (ano && mes && dia) ? `${ano}-${mes}-${dia}` : '';
+    const valor = parseValorMonetarioExtrato(pegar('TRNAMT'));
+    const descricao = pegar('MEMO') || pegar('NAME') || '';
+    return { data, valor, descricao };
+  }).filter(item => item.data);
+}
+
+// Extrai os lançamentos de um CSV genérico, identificando colunas de data/valor/descrição
+// pelo cabeçalho (funciona com a maioria dos exports de banco em português).
+function parseCSVExtrato(texto){
+  const linhas = texto.split(/\r\n|\n|\r/).filter(l => l.trim().length > 0);
+  if(linhas.length < 2) return null;
+  const delim = (linhas[0].split(';').length > linhas[0].split(',').length) ? ';' : ',';
+  const header = splitLinhaCSV(linhas[0], delim).map(normalizarTextoExtrato);
+  const idxData = header.findIndex(h => ['data','date','dt'].includes(h));
+  const idxValor = header.findIndex(h => h.includes('valor') || ['value','amount','vlr'].includes(h));
+  const idxDesc = header.findIndex(h => h.includes('descri') || h.includes('histor') || h.includes('memo') || h.includes('lancamento') || h.includes('estabelecimento') || h.includes('title'));
+  const idxTipo = header.findIndex(h => ['tipo','natureza','d/c','dc'].includes(h));
+  if(idxData === -1 || idxValor === -1) return null;
+  return linhas.slice(1).map(linha => {
+    const cols = splitLinhaCSV(linha, delim);
+    const data = parseDataGenericaExtrato(cols[idxData]);
+    let valor = parseValorMonetarioExtrato(cols[idxValor]);
+    if(idxTipo > -1){
+      const tipoTxt = normalizarTextoExtrato(cols[idxTipo]);
+      if(tipoTxt.startsWith('d') || tipoTxt.includes('debit') || tipoTxt.includes('saida')) valor = -Math.abs(valor);
+      else if(tipoTxt.startsWith('c') || tipoTxt.includes('credit') || tipoTxt.includes('entrada')) valor = Math.abs(valor);
+    }
+    const descricao = idxDesc > -1 ? (cols[idxDesc] || '').trim() : '';
+    return { data, valor, descricao };
+  }).filter(item => item.data);
+}
+
+function processarArquivoExtrato(e){
+  const arquivo = e.target.files[0];
+  document.getElementById('extratoErro').textContent = '';
+  document.getElementById('extratoErro').style.color = 'var(--red)';
+  document.getElementById('extratoPreviewWrap').style.display = 'none';
+  extratoParsed = [];
+  if(!arquivo) return;
+
+  const leitor = new FileReader();
+  leitor.onload = function(ev){
+    let texto = new TextDecoder('utf-8').decode(ev.target.result);
+    if(/charset=iso-8859-1|encoding[:>]\s*iso-8859-1/i.test(texto) || texto.includes('�')){
+      texto = new TextDecoder('iso-8859-1').decode(ev.target.result);
+    }
+
+    const nomeArquivo = arquivo.name.toLowerCase();
+    const ehOFX = nomeArquivo.endsWith('.ofx') || nomeArquivo.endsWith('.qfx') || texto.includes('<STMTTRN>');
+    const itens = ehOFX ? parseOFXExtrato(texto) : parseCSVExtrato(texto);
+
+    if(!itens || itens.length === 0){
+      document.getElementById('extratoErro').textContent = 'Não foi possível reconhecer nenhum lançamento nesse arquivo. Confira se é um extrato OFX ou um CSV com colunas de Data, Descrição e Valor.';
+      return;
+    }
+
+    const tipoExtrato = document.getElementById('extratoTipo').value;
+    extratoParsed = itens.map(item => ({
+      data: item.data,
+      descricao: item.descricao,
+      valor: Math.abs(item.valor),
+      tipo: tipoExtrato === 'cartao' ? 'cartao' : (item.valor >= 0 ? 'receita' : 'despesa'),
+      incluir: true
+    })).sort((a,b) => a.data.localeCompare(b.data));
+
+    renderExtratoPreview();
+  };
+  leitor.onerror = function(){
+    document.getElementById('extratoErro').textContent = 'Não foi possível ler esse arquivo.';
+  };
+  leitor.readAsArrayBuffer(arquivo);
+}
+
+function renderExtratoPreview(){
+  const wrap = document.getElementById('extratoPreviewWrap');
+  const body = document.getElementById('extratoPreviewBody');
+  if(extratoParsed.length === 0){ wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+  const tipoExtrato = document.getElementById('extratoTipo').value;
+  document.getElementById('extratoResumo').textContent = extratoParsed.length + ' lançamentos encontrados no arquivo';
+  body.innerHTML = extratoParsed.map((item, idx) => {
+    const cor = item.tipo === 'receita' ? 'pos' : 'neg';
+    const tipoCell = tipoExtrato === 'cartao'
+      ? '<span class="tag cartao">Cartão</span>'
+      : `<select onchange="mudarTipoExtratoItem(${idx}, this.value)">
+           <option value="receita" ${item.tipo === 'receita' ? 'selected' : ''}>Receita</option>
+           <option value="despesa" ${item.tipo === 'despesa' ? 'selected' : ''}>Despesa</option>
+         </select>`;
+    return `
+      <tr>
+        <td><input type="checkbox" ${item.incluir ? 'checked' : ''} onchange="toggleExtratoItem(${idx})"></td>
+        <td>${fmtDate(item.data)}</td>
+        <td>${item.descricao || '-'}</td>
+        <td class="${cor}">${fmt(item.valor)}</td>
+        <td>${tipoCell}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function toggleExtratoItem(idx){
+  extratoParsed[idx].incluir = !extratoParsed[idx].incluir;
+}
+function selecionarTodosExtrato(valor){
+  extratoParsed.forEach(item => item.incluir = valor);
+  renderExtratoPreview();
+}
+function mudarTipoExtratoItem(idx, novoTipo){
+  extratoParsed[idx].tipo = novoTipo;
+}
+
+function importarExtratoSelecionados(){
+  const selecionados = extratoParsed.filter(i => i.incluir);
+  if(selecionados.length === 0){
+    alert('Selecione ao menos um lançamento para importar.');
+    return;
+  }
+  const tipoExtrato = document.getElementById('extratoTipo').value;
+  const nomeCartao = document.getElementById('extratoCartaoNome').value.trim();
+  if(tipoExtrato === 'cartao' && !nomeCartao){
+    alert('Informe o nome do cartão antes de importar.');
+    return;
+  }
+
+  selecionados.forEach(item => {
+    data.lancamentos.push({
+      id: uid(),
+      data: item.data,
+      tipo: item.tipo,
+      categoria: 'Outros',
+      valor: item.valor,
+      descricao: item.descricao || '',
+      nome: item.tipo === 'cartao' ? nomeCartao : null,
+      limite: null,
+      vencimento: null,
+      parcelas: null,
+      tipoInvestimento: null,
+      meta: null,
+      forma: item.tipo === 'cartao' ? null : 'Banco'
+    });
+  });
+  saveData();
+
+  const qtd = selecionados.length;
+  extratoParsed = [];
+  document.getElementById('extratoPreviewWrap').style.display = 'none';
+  document.getElementById('extratoArquivo').value = '';
+  document.getElementById('extratoErro').style.color = 'var(--green)';
+  document.getElementById('extratoErro').textContent = qtd + ' lançamento' + (qtd === 1 ? '' : 's') + ' importado' + (qtd === 1 ? '' : 's') + ' com sucesso!';
+  renderAll();
 }
 
 auth.onAuthStateChanged(function(user){
@@ -2104,7 +2368,9 @@ function renderCharts(){
     },
     options: {
       responsive:true, maintainAspectRatio:false,
-      layout: { padding: { right: 90 } },
+      // No celular a caixa de "maiores gastos" fica escondida por padrão (só aparece ao clicar),
+      // então não precisa reservar espaço à direita — mantém o gráfico centralizado.
+      layout: { padding: { right: mostrarLegendaCategorias ? 90 : 0 } },
       plugins: {
         legend: { display: mostrarLegendaCategorias, position:'bottom', labels:{color:'#e2e8f0', boxWidth:12, font:{size:11}} },
         tooltip: {
