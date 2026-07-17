@@ -125,9 +125,19 @@
     flex:1; max-width:120px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
     background:none; border:none; color:var(--muted); cursor:pointer; padding:6px 4px; border-radius:10px;
   }
-  .bottom-nav-btn:hover{ background:rgba(255,255,255,0.05); }
-  .bottom-nav-btn .bn-icon{ font-size:1.25rem; color:var(--blue); }
-  .bottom-nav-btn .bn-label{ font-size:0.68rem; font-weight:600; }
+  .bottom-nav-btn:hover, .bottom-nav-btn:active{ background:rgba(255,255,255,0.05); color:var(--text); }
+  .bottom-nav-btn .bn-icon{ display:flex; }
+  .bottom-nav-btn .bn-icon svg{ width:22px; height:22px; }
+  .bottom-nav-btn .bn-label{ font-size:0.66rem; font-weight:600; }
+
+  /* Botão flutuante de mostrar/ocultar valores */
+  .eye-btn{
+    position:fixed; top:16px; right:16px; z-index:950;
+    background:var(--card); color:var(--text); border:1px solid var(--border); border-radius:50%;
+    width:42px; height:42px; display:flex; align-items:center; justify-content:center;
+    font-size:1.1rem; cursor:pointer; box-shadow:0 2px 10px rgba(0,0,0,0.4);
+  }
+  .eye-btn:hover{ opacity:0.85; }
 
   body.valores-ocultos .pos,
   body.valores-ocultos .neg,
@@ -216,8 +226,9 @@
     .modal-header h3{ font-size:0.92rem; }
 
     body.has-bottom-nav{ padding-bottom:76px; }
-    .bottom-nav-btn .bn-icon{ font-size:1.15rem; }
-    .bottom-nav-btn .bn-label{ font-size:0.62rem; }
+    .bottom-nav-btn .bn-icon svg{ width:20px; height:20px; }
+    .bottom-nav-btn .bn-label{ font-size:0.6rem; }
+    .eye-btn{ top:10px; right:10px; width:38px; height:38px; font-size:1rem; }
   }
 </style>
 </head>
@@ -242,10 +253,29 @@
   </div>
 </div>
 
+<button id="olhoValoresBtn" class="eye-btn" onclick="toggleValores()" title="Mostrar/ocultar valores"><span id="olhoValoresIcon">👁️</span></button>
+
 <nav id="bottomNav" class="bottom-nav">
-  <button id="orcamentoIconBtn" class="bottom-nav-btn" onclick="abrirOrcamento()"><span class="bn-icon">📅</span><span class="bn-label">Orçamento</span></button>
-  <button id="provisoesIconBtn" class="bottom-nav-btn" onclick="abrirProvisoes()"><span class="bn-icon">📌</span><span class="bn-label">Provisões</span></button>
-  <button id="olhoValoresBtn" class="bottom-nav-btn" onclick="toggleValores()" title="Mostrar/ocultar valores"><span class="bn-icon" id="olhoValoresIcon">👁️</span><span class="bn-label">Valores</span></button>
+  <button id="homeIconBtn" class="bottom-nav-btn" onclick="irHome()">
+    <span class="bn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9a1 1 0 0 0 1 1h3v-6h4v6h3a1 1 0 0 0 1-1v-9"/></svg></span>
+    <span class="bn-label">Home</span>
+  </button>
+  <button id="lancamentosIconBtn" class="bottom-nav-btn" onclick="abrirLancamentos()">
+    <span class="bn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h11l-3-3"/><path d="M17 17H6l3 3"/></svg></span>
+    <span class="bn-label">Lançamentos</span>
+  </button>
+  <button id="orcamentoIconBtn" class="bottom-nav-btn" onclick="abrirOrcamento()">
+    <span class="bn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 9 9h-9V3z"/></svg></span>
+    <span class="bn-label">Orçamento</span>
+  </button>
+  <button id="provisoesIconBtn" class="bottom-nav-btn" onclick="abrirProvisoes()">
+    <span class="bn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17"/><path d="M8 3v4M16 3v4"/><circle cx="16" cy="14.5" r="1.4" fill="currentColor" stroke="none"/></svg></span>
+    <span class="bn-label">Provisões</span>
+  </button>
+  <button id="extratosIconBtn" class="bottom-nav-btn" onclick="abrirExtratos()">
+    <span class="bn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l4 4v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v4h4"/><path d="M8.5 12.5h7M8.5 15.5h7M8.5 18h4"/></svg></span>
+    <span class="bn-label">Extratos</span>
+  </button>
 </nav>
 
 <div id="orcamentoModal" class="modal-overlay" onclick="if(event.target===this) fecharOrcamento()">
@@ -349,8 +379,12 @@
 
 <div class="cards" id="summaryCards"></div>
 
-<div class="panel row-gap">
-  <h2><span class="title">➕ Lançamentos</span></h2>
+<div id="lancamentosModal" class="modal-overlay" onclick="if(event.target===this) fecharLancamentos()">
+<div class="modal-card" style="max-width:820px;">
+<div class="modal-header">
+  <h3><span class="title">➕ Lançamentos</span></h3>
+  <button class="secondary small" onclick="fecharLancamentos()">Fechar</button>
+</div>
   <form class="inline" id="lancForm">
     <div class="field">
       <label>Data</label>
@@ -445,6 +479,7 @@
     <div class="empty" id="txEmpty" style="display:none;">Nenhum lançamento neste mês.</div>
   </div>
 </div>
+</div>
 
 <div class="grid2 row-gap">
   <div class="panel">
@@ -512,6 +547,16 @@
 
 </div>
 
+<div id="extratosModal" class="modal-overlay" onclick="if(event.target===this) fecharExtratos()">
+  <div class="modal-card" style="max-width:420px;">
+    <div class="modal-header">
+      <h3>Extratos</h3>
+      <button class="secondary small" onclick="fecharExtratos()">Fechar</button>
+    </div>
+    <div class="hint">Em breve você vai poder importar extratos bancários aqui, sem precisar lançar tudo manualmente.</div>
+  </div>
+</div>
+
 <div id="razaoModal" class="modal-overlay" onclick="if(event.target===this) fecharRazao()">
   <div class="modal-card">
     <div class="modal-header">
@@ -572,6 +617,7 @@ function showLoading(){
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('appScreen').style.display = 'none';
   document.getElementById('bottomNav').style.display = 'none';
+  document.getElementById('olhoValoresBtn').style.display = 'none';
   document.body.classList.remove('has-bottom-nav');
 }
 function showLogin(){
@@ -579,9 +625,12 @@ function showLogin(){
   document.getElementById('loginScreen').style.display = 'flex';
   document.getElementById('appScreen').style.display = 'none';
   document.getElementById('bottomNav').style.display = 'none';
+  document.getElementById('olhoValoresBtn').style.display = 'none';
   document.body.classList.remove('has-bottom-nav');
+  fecharLancamentos();
   fecharOrcamento();
   fecharProvisoes();
+  fecharExtratos();
   document.getElementById('loginForm').reset();
   document.getElementById('loginError').textContent = '';
   document.getElementById('logoutNotice').textContent = logoutManual ? 'Você saiu da conta. Entre com outro e-mail e senha para trocar de conta.' : '';
@@ -593,6 +642,7 @@ function showApp(){
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('appScreen').style.display = 'block';
   document.getElementById('bottomNav').style.display = 'flex';
+  document.getElementById('olhoValoresBtn').style.display = 'flex';
   document.body.classList.add('has-bottom-nav');
   document.getElementById('logoutNotice').textContent = '';
 }
@@ -600,6 +650,28 @@ function showApp(){
 function toggleValores(){
   const oculto = document.body.classList.toggle('valores-ocultos');
   document.getElementById('olhoValoresIcon').textContent = oculto ? '🙈' : '👁️';
+}
+
+function irHome(){
+  fecharLancamentos();
+  fecharOrcamento();
+  fecharProvisoes();
+  fecharExtratos();
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function abrirLancamentos(){
+  document.getElementById('lancamentosModal').style.display = 'flex';
+}
+function fecharLancamentos(){
+  document.getElementById('lancamentosModal').style.display = 'none';
+}
+
+function abrirExtratos(){
+  document.getElementById('extratosModal').style.display = 'flex';
+}
+function fecharExtratos(){
+  document.getElementById('extratosModal').style.display = 'none';
 }
 
 auth.onAuthStateChanged(function(user){
@@ -1624,7 +1696,7 @@ function editLancamento(id){
   if(item.tipo === 'investimento') document.getElementById('lancMetaInvestimento').value = item.meta || '';
   document.getElementById('lancSubmitBtn').textContent = 'Salvar alteração';
   document.getElementById('lancCancelBtn').style.display = 'inline-block';
-  document.getElementById('lancForm').scrollIntoView({behavior:'smooth', block:'start'});
+  abrirLancamentos();
 }
 
 function cancelEdit(){
@@ -1642,7 +1714,7 @@ function novoLancamento(tipo){
   cancelEdit();
   document.getElementById('lancTipo').value = tipo;
   updateFormFieldsVisibility(tipo);
-  document.getElementById('lancForm').scrollIntoView({behavior:'smooth', block:'start'});
+  abrirLancamentos();
   const focoId = tipo === 'cartao' ? 'lancCartaoNome' : 'lancValor';
   setTimeout(()=>document.getElementById(focoId).focus(), 300);
 }
