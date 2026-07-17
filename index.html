@@ -124,6 +124,12 @@
   .modal-card{background:var(--card); border:1px solid var(--border); border-radius:14px; padding:20px; max-width:760px; width:100%; max-height:85vh; overflow-y:auto;}
   .modal-header{display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; gap:10px;}
   .modal-header h3{margin:0; font-size:1.05rem;}
+  .modal-close-btn{
+    background:none; border:none; color:var(--muted); cursor:pointer; padding:0; flex-shrink:0;
+    width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  }
+  .modal-close-btn:hover{ background:rgba(255,255,255,0.08); color:var(--text); }
+  .modal-close-btn svg{ width:20px; height:20px; }
 
   /* Telas de página inteira abertas pela barra inferior (Lançamentos, Orçamento, Provisões, Extratos):
      substituem o conteúdo da Home em vez de flutuar por cima dela. Home volta pelo botão "Home". */
@@ -789,7 +795,9 @@
   <div class="modal-card" style="max-width:640px;">
     <div class="modal-header">
       <h3>Detalhes</h3>
-      <button class="secondary small" onclick="fecharPainelModal()">Fechar</button>
+      <button class="modal-close-btn" onclick="fecharPainelModal()" title="Fechar" aria-label="Fechar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
+      </button>
     </div>
     <div id="painelModalBody"></div>
   </div>
@@ -799,7 +807,9 @@
   <div class="modal-card">
     <div class="modal-header">
       <h3 id="razaoTitle">Razão</h3>
-      <button class="secondary small" onclick="fecharRazao()">Fechar</button>
+      <button class="modal-close-btn" onclick="fecharRazao()" title="Fechar" aria-label="Fechar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
+      </button>
     </div>
     <div id="razaoResumoCartoes"></div>
     <div id="razaoChartContainer" style="display:none; margin-bottom:16px;">
