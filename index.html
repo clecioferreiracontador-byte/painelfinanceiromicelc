@@ -27,6 +27,8 @@
   }
   .header-block{text-align:center; margin-bottom:24px; position:relative;}
   h1{font-size:1.9rem; margin:0 0 6px 0; letter-spacing:.02em;}
+  .app-logo{display:block; margin:0 auto 10px; width:76px; height:76px; border-radius:20px; box-shadow:0 8px 24px rgba(0,0,0,0.45);}
+  .login-card .app-logo{width:64px; height:64px; border-radius:17px; margin-bottom:14px;}
   .sub{color:var(--muted); font-size:0.9rem;}
   .user-bar{display:flex; align-items:center; justify-content:center; gap:12px; margin-top:10px; font-size:0.8rem; color:var(--muted);}
   .cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin-bottom:28px;}
@@ -161,6 +163,8 @@
     body{ padding:12px 10px 20px; }
     h1{ font-size:1.3rem; }
     .sub{ font-size:0.78rem; }
+    .app-logo{ width:56px; height:56px; border-radius:15px; }
+    .login-card .app-logo{ width:52px; height:52px; border-radius:14px; }
     .user-bar{ font-size:0.72rem; gap:8px; flex-wrap:wrap; }
 
     .panel{ padding:12px; }
@@ -223,7 +227,7 @@
 
 <div id="loginScreen">
   <div class="login-card">
-    <h2>Planilha Financeira Micelc</h2>
+    <img src="icons/icon-192.png" alt="Micelc" class="app-logo">
     <div class="sub">Entre com e-mail e senha para acessar seus dados de qualquer aparelho.</div>
     <form id="loginForm">
       <div class="field"><label>E-mail</label><input type="email" id="loginEmail" required></div>
@@ -332,7 +336,7 @@
 <div id="appScreen" style="display:none;">
 
 <div class="header-block">
-  <h1>Planilha Financeira Micelc</h1>
+  <img src="icons/icon-192.png" alt="Micelc" class="app-logo">
   <div class="sub">Registre receitas, despesas, cartões de crédito, dívidas, conta corrente e investimentos. Clique nos cards para ver o razão de cada um.</div>
   <div class="user-bar">
     <span id="userEmailDisplay"></span>
