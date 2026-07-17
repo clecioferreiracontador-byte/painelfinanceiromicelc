@@ -114,7 +114,9 @@
 
   /* Telas de página inteira abertas pela barra inferior (Lançamentos, Orçamento, Provisões, Extratos):
      substituem o conteúdo da Home em vez de flutuar por cima dela. Home volta pelo botão "Home". */
-  .page-view{display:none;}
+  /* padding-top evita que o cabeçalho da página (título + botão Voltar) fique atrás do
+     botão de conta fixo no canto superior direito */
+  .page-view{display:none; padding-top:56px;}
   .page-view .view-card{max-width:820px; margin:0 auto 24px;}
 
   /* Barra de navegação inferior fixa (só aparece logado), estilo apps de banco */
@@ -1637,25 +1639,45 @@ document.getElementById('provisaoForm').addEventListener('submit', function(e){
 });
 
 // ---------- Fluxo de Caixa Projetado (lançamentos do mês + provisões futuras) ----------
+// Parcelas de cartão já lançadas para meses futuros (ex: compra em 3x) ainda não entram no
+// saldo da conta corrente (só entram quando a fatura é paga), mas já são um gasto certo —
+// por isso contam na projeção do fluxo de caixa dos próximos meses, junto com as provisões.
+function parcelasCartaoFuturasPorMes(mesReferencia){
+  return data.lancamentos.filter(l => l.tipo === 'cartao' && l.data && l.data.slice(0,7) === mesReferencia);
+}
+
 function getMesesProjetados(){
   const hoje = new Date().toISOString().slice(0,7);
   const mesesComProvisao = [...new Set((data.provisoes||[]).map(p=>p.mes))].filter(m => m >= hoje);
-  const meses = [...new Set([hoje].concat(mesesComProvisao))].sort();
+  const mesesComParcelaCartao = [...new Set(
+    data.lancamentos.filter(l => l.tipo === 'cartao' && l.data && l.data.slice(0,7) > hoje).map(l => l.data.slice(0,7))
+  )];
+  const meses = [...new Set([hoje].concat(mesesComProvisao).concat(mesesComParcelaCartao))].sort();
   return meses;
 }
 
 function calcularFluxoProjetado(){
   const saldoAtual = calcularSaldoContaCorrente().saldo;
+  const hoje = new Date().toISOString().slice(0,7);
   const meses = getMesesProjetados();
   let acumulado = saldoAtual;
   const linhas = [];
   meses.forEach(mes => {
     const provDoMes = (data.provisoes||[]).filter(p => p.mes === mes)
       .sort((a,b) => a.tipo === b.tipo ? 0 : (a.tipo === 'receita' ? -1 : 1));
-    if(provDoMes.length === 0){
+    const parcelasCartaoDoMes = mes > hoje
+      ? parcelasCartaoFuturasPorMes(mes).map(l => ({
+          tipo: 'despesa',
+          categoria: l.categoria || 'Cartão de Crédito',
+          descricao: (l.nome ? l.nome + ' - ' : '') + (l.descricao || 'Cartão de crédito'),
+          valor: l.valor
+        }))
+      : [];
+    const itensDoMes = provDoMes.concat(parcelasCartaoDoMes);
+    if(itensDoMes.length === 0){
       linhas.push({ mes, tipo:null, categoria:'-', descricao: (mes === meses[0] ? 'Sem provisões neste mês' : 'Sem provisões cadastradas'), valor:null, saldoAcumulado: acumulado });
     } else {
-      provDoMes.forEach(p => {
+      itensDoMes.forEach(p => {
         acumulado += (p.tipo === 'receita' ? Number(p.valor) : -Number(p.valor));
         linhas.push({ mes, tipo:p.tipo, categoria:p.categoria, descricao:p.descricao || '-', valor:p.valor, saldoAcumulado: acumulado });
       });
@@ -1712,7 +1734,7 @@ function renderAll(){
   renderContaPanel();
   renderCartoesPanel();
   renderFluxoCaixa();
-  if(document.getElementById('orcamentoModal').style.display === 'flex') renderOrcamento();
+  if(document.getElementById('orcamentoModal').style.display === 'block') renderOrcamento();
   if(razaoAtualKey) renderRazaoContent();
 }
 
