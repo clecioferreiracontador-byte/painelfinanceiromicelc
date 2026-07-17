@@ -167,14 +167,26 @@
 
   .bottom-nav-btn.active{ color:var(--text); }
 
-  /* Botão de expandir/ocultar painel (só some no celular; no desktop o painel já fica sempre aberto) */
   .h2-actions{ display:flex; align-items:center; gap:8px; }
-  .panel-toggle-btn{ display:none; background:none; border:none; color:var(--muted); cursor:pointer; padding:4px; align-items:center; }
-  .panel-toggle-btn svg{ width:18px; height:18px; transition:transform .2s; }
-  .panel-collapsible.expanded .panel-toggle-btn svg{ transform:rotate(180deg); }
 
   /* Botão "ver maiores gastos" (só aparece no celular; no desktop a lista já fica sempre visível) */
   .top-despesas-toggle{ display:none; }
+
+  .home-greeting{ font-size:1.15rem; font-weight:700; margin:2px 0 10px; }
+
+  /* Fileira horizontal de emblemas (só aparece no celular — ver media query mais abaixo).
+     No desktop os painéis completos continuam sempre visíveis, sem essa fileira. */
+  .emblemas-row{ display:none; }
+  .emblema-btn{
+    flex:0 0 auto; width:74px; display:flex; flex-direction:column; align-items:center; gap:6px;
+    background:none; border:none; color:var(--text); cursor:pointer; padding:2px;
+  }
+  .emblema-icon{
+    width:52px; height:52px; border-radius:50%; background:var(--card2); border:1px solid var(--border);
+    display:flex; align-items:center; justify-content:center; color:var(--muted); flex-shrink:0;
+  }
+  .emblema-icon svg{ width:22px; height:22px; }
+  .emblema-label{ font-size:0.66rem; font-weight:600; text-align:center; line-height:1.2; }
 
   body.valores-ocultos .pos,
   body.valores-ocultos .neg,
@@ -265,10 +277,11 @@
     .top-despesa-row .pct{ font-size:0.5rem; }
     .top-despesas-toggle{ display:inline-block; }
 
-    /* Painéis secundários (evolução, fluxo de caixa, cartões etc.): minimizados por padrão, abrem ao clicar */
-    .panel-collapsible .panel-body{ display:none; }
-    .panel-collapsible.expanded .panel-body{ display:block; }
-    .panel-toggle-btn{ display:inline-flex; }
+    /* Painéis secundários (despesas por categoria, evolução, cartões etc.): ficam escondidos na
+       Home e só abrem numa janela (#painelModal) ao tocar no emblema correspondente. */
+    #panelDespesasCategoria, #panelReceitaDespesa, #panelEvolucao,
+    #panelConta, #panelCartoes, #panelDividas, #panelInvestimentos{ display:none; }
+    .emblemas-row{ display:flex; gap:14px; overflow-x:auto; padding:4px 2px 12px; margin-bottom:6px; -webkit-overflow-scrolling:touch; }
 
     .modal-card, .page-view .view-card{ padding:14px; }
     .modal-card{ max-height:88vh; }
@@ -443,13 +456,45 @@
 <div class="header-block">
   <img src="icons/icon-192.png" alt="Micelc" class="app-logo">
   <span class="app-logo-name">Micelc</span>
+  <div class="home-greeting" id="homeGreeting"></div>
   <div class="sub">Registre sua movimentação do mês, e clique nos cards para visualizá-los.</div>
 </div>
 
 <div class="cards" id="summaryCards"></div>
 
+<div class="emblemas-row">
+  <button class="emblema-btn" onclick="abrirPainelModal('panelDespesasCategoria')">
+    <span class="emblema-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 4v8h8"/><path d="M12 12 6.3 16.9"/></svg></span>
+    <span class="emblema-label">Despesas por Categoria</span>
+  </button>
+  <button class="emblema-btn" onclick="abrirPainelModal('panelReceitaDespesa')">
+    <span class="emblema-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20V10M12 20V4M19 20v-7"/></svg></span>
+    <span class="emblema-label">Receita x Despesa</span>
+  </button>
+  <button class="emblema-btn" onclick="abrirPainelModal('panelEvolucao')">
+    <span class="emblema-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16l5-5 4 4 7-8"/><path d="M15 7h5v5"/></svg></span>
+    <span class="emblema-label">Evolução de Resultado</span>
+  </button>
+  <button class="emblema-btn" onclick="abrirPainelModal('panelConta')">
+    <span class="emblema-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10 12 4l9 6"/><path d="M5 10v9M9 10v9M15 10v9M19 10v9"/><path d="M3 19h18"/></svg></span>
+    <span class="emblema-label">Conta Corrente</span>
+  </button>
+  <button class="emblema-btn" onclick="abrirPainelModal('panelCartoes')">
+    <span class="emblema-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><path d="M6 15h4"/></svg></span>
+    <span class="emblema-label">Cartões de Crédito</span>
+  </button>
+  <button class="emblema-btn" onclick="abrirPainelModal('panelDividas')">
+    <span class="emblema-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M8 12h8"/></svg></span>
+    <span class="emblema-label">Dívidas</span>
+  </button>
+  <button class="emblema-btn" onclick="abrirPainelModal('panelInvestimentos')">
+    <span class="emblema-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V12"/><path d="M12 12C12 8 9 6 6 6c0 4 2 6 6 6z"/><path d="M12 12c0-5 3-8 7-8 0 5-3 8-7 8z"/></svg></span>
+    <span class="emblema-label">Pé de Meia</span>
+  </button>
+</div>
+
 <div class="grid2 row-gap">
-  <div class="panel">
+  <div class="panel" id="panelDespesasCategoria">
     <h2><span class="title"><span class="h2-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 4v8h8"/><path d="M12 12 6.3 16.9"/></svg></span> Despesas por Categoria (%)</span>
       <span class="h2-actions">
         <button class="secondary small top-despesas-toggle" id="toggleTopDespesasBtn" onclick="toggleTopDespesas()">Ver maiores gastos</button>
@@ -460,31 +505,22 @@
       <div class="top-despesas-box" id="topDespesasList"></div>
     </div>
   </div>
-  <div class="panel panel-collapsible" id="panelReceitaDespesa">
-    <h2><span class="title"><span class="h2-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20V10M12 20V4M19 20v-7"/></svg></span> Receita x Despesa por Mês</span>
-      <span class="h2-actions">
-        <button class="panel-toggle-btn" onclick="togglePanel('panelReceitaDespesa')" title="Mostrar/ocultar" aria-label="Mostrar/ocultar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
-      </span>
-    </h2>
+  <div class="panel" id="panelReceitaDespesa">
+    <h2><span class="title"><span class="h2-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20V10M12 20V4M19 20v-7"/></svg></span> Receita x Despesa por Mês</span></h2>
     <div class="panel-body"><div class="chart-box"><canvas id="chartFluxo"></canvas></div></div>
   </div>
 </div>
 
-<div class="panel row-gap panel-collapsible" id="panelEvolucao">
-  <h2><span class="title"><span class="h2-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16l5-5 4 4 7-8"/><path d="M15 7h5v5"/></svg></span> Evolução do Resultado Acumulado (mês selecionado)</span>
-    <span class="h2-actions">
-      <button class="panel-toggle-btn" onclick="togglePanel('panelEvolucao')" title="Mostrar/ocultar" aria-label="Mostrar/ocultar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
-    </span>
-  </h2>
+<div class="panel row-gap" id="panelEvolucao">
+  <h2><span class="title"><span class="h2-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16l5-5 4 4 7-8"/><path d="M15 7h5v5"/></svg></span> Evolução do Resultado Acumulado (mês selecionado)</span></h2>
   <div class="panel-body"><div class="chart-box"><canvas id="chartSaldo"></canvas></div></div>
 </div>
 
 <div class="grid2 row-gap">
-  <div class="panel panel-collapsible" id="panelConta">
+  <div class="panel" id="panelConta">
     <h2><span class="title"><span class="h2-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10 12 4l9 6"/><path d="M5 10v9M9 10v9M15 10v9M19 10v9"/><path d="M3 19h18"/></svg></span> Conta Corrente</span>
       <span class="h2-actions">
         <button class="secondary small" onclick="novoLancamento('conta')">+ Ajustar saldo base</button>
-        <button class="panel-toggle-btn" onclick="togglePanel('panelConta')" title="Mostrar/ocultar" aria-label="Mostrar/ocultar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
       </span>
     </h2>
     <div class="panel-body">
@@ -507,11 +543,10 @@
     </div>
   </div>
 
-  <div class="panel panel-collapsible" id="panelCartoes">
+  <div class="panel" id="panelCartoes">
     <h2><span class="title"><span class="h2-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><path d="M6 15h4"/></svg></span> Cartões de Crédito</span>
       <span class="h2-actions">
         <button class="secondary small" onclick="novoLancamento('cartao')">+ Novo lançamento</button>
-        <button class="panel-toggle-btn" onclick="togglePanel('panelCartoes')" title="Mostrar/ocultar" aria-label="Mostrar/ocultar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
       </span>
     </h2>
     <div class="panel-body">
@@ -522,11 +557,10 @@
 </div>
 
 <div class="grid2 row-gap">
-  <div class="panel panel-collapsible" id="panelDividas">
+  <div class="panel" id="panelDividas">
     <h2><span class="title"><span class="h2-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M8 12h8"/></svg></span> Dívidas</span>
       <span class="h2-actions">
         <button class="secondary small" onclick="novoLancamento('divida')">+ Nova dívida</button>
-        <button class="panel-toggle-btn" onclick="togglePanel('panelDividas')" title="Mostrar/ocultar" aria-label="Mostrar/ocultar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
       </span>
     </h2>
     <div class="panel-body">
@@ -535,17 +569,16 @@
     </div>
   </div>
 
-  <div class="panel panel-collapsible" id="panelInvestimentos">
-    <h2><span class="title"><span class="h2-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V12"/><path d="M12 12C12 8 9 6 6 6c0 4 2 6 6 6z"/><path d="M12 12c0-5 3-8 7-8 0 5-3 8-7 8z"/></svg></span> Investimentos</span>
+  <div class="panel" id="panelInvestimentos">
+    <h2><span class="title"><span class="h2-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V12"/><path d="M12 12C12 8 9 6 6 6c0 4 2 6 6 6z"/><path d="M12 12c0-5 3-8 7-8 0 5-3 8-7 8z"/></svg></span> Pé de Meia</span>
       <span class="h2-actions">
-        <button class="secondary small" onclick="novoLancamento('investimento')">+ Novo investimento</button>
-        <button class="panel-toggle-btn" onclick="togglePanel('panelInvestimentos')" title="Mostrar/ocultar" aria-label="Mostrar/ocultar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
+        <button class="secondary small" onclick="novoLancamento('investimento')">+ Novo pé de meia</button>
       </span>
     </h2>
     <div class="panel-body">
     <div id="metasInvestimentoList"></div>
     <div id="investList"></div>
-    <div class="totals-line"><span>Total investido</span><span id="investTotal" class="blur-target">R$ 0,00</span></div>
+    <div class="totals-line"><span>Total no pé de meia</span><span id="investTotal" class="blur-target">R$ 0,00</span></div>
     </div>
   </div>
 </div>
@@ -573,7 +606,7 @@
         <option value="cartao">Cartão de Crédito</option>
         <option value="divida">Dívida</option>
         <option value="conta">Conta Corrente</option>
-        <option value="investimento">Investimento</option>
+        <option value="investimento">Pé de Meia</option>
       </select>
     </div>
     <div class="field" id="fieldFormaConta">
@@ -614,7 +647,7 @@
       <span class="hint" id="lancParcelasHint"></span>
     </div>
     <div class="field" id="fieldTipoInvestimento">
-      <label>Tipo de investimento</label>
+      <label>Tipo de aplicação</label>
       <select id="lancTipoInvestimento">
         <option>Renda Fixa</option>
         <option>Renda Variável</option>
@@ -701,6 +734,16 @@
       </div>
       <button type="button" onclick="importarExtratoSelecionados()" style="margin-top:14px;">Importar selecionados</button>
     </div>
+  </div>
+</div>
+
+<div id="painelModal" class="modal-overlay" onclick="if(event.target===this) fecharPainelModal()">
+  <div class="modal-card" style="max-width:640px;">
+    <div class="modal-header">
+      <h3>Detalhes</h3>
+      <button class="secondary small" onclick="fecharPainelModal()">Fechar</button>
+    </div>
+    <div id="painelModalBody"></div>
   </div>
 </div>
 
@@ -826,6 +869,7 @@ const BTN_ID_FOR_VIEW = {
   extratosModal: 'extratosIconBtn'
 };
 function mostrarView(viewId){
+  if(typeof fecharPainelModal === 'function') fecharPainelModal();
   VIEW_IDS.forEach(id => {
     const el = document.getElementById(id);
     if(el) el.style.display = (id === viewId) ? 'block' : 'none';
@@ -1089,6 +1133,10 @@ auth.onAuthStateChanged(function(user){
   if(unsubscribeSnapshot){ unsubscribeSnapshot(); unsubscribeSnapshot = null; }
   if(user){
     document.getElementById('menuUserEmail').textContent = user.email;
+    const nomeExibido = (user.email || '').split('@')[0];
+    document.getElementById('homeGreeting').textContent = nomeExibido
+      ? 'Olá, ' + nomeExibido.charAt(0).toUpperCase() + nomeExibido.slice(1)
+      : '';
     docRef = db.collection('usuarios').doc(user.uid);
     unsubscribeSnapshot = docRef.onSnapshot(function(snap){
       if(snap.exists){
@@ -1294,7 +1342,7 @@ const TAG_INFO = {
   cartao: {label:'Cartão', cls:'cartao'},
   divida: {label:'Dívida', cls:'divida'},
   conta: {label:'Conta Corrente', cls:'conta'},
-  investimento: {label:'Investimento', cls:'investimento'}
+  investimento: {label:'Pé de Meia', cls:'investimento'}
 };
 
 function categoriasBaseParaTipo(tipo){
@@ -1417,7 +1465,7 @@ function excluirMetaInvestimentoSelecionada(){
 function excluirMetaInvestimentoPorId(id){
   const meta = (data.metasInvestimento || []).find(m => m.id === id);
   if(!meta) return;
-  if(!confirm('Excluir a meta "' + meta.nome + '"? Os investimentos já lançados continuam existindo, só deixam de contar para essa meta.')) return;
+  if(!confirm('Excluir a meta "' + meta.nome + '"? Os valores do pé de meia já lançados continuam existindo, só deixam de contar para essa meta.')) return;
   data.metasInvestimento = data.metasInvestimento.filter(m => m.id !== id);
   saveData();
   populateMetaInvestimentoSelect();
@@ -2020,7 +2068,7 @@ function renderSummary(){
     {key:'despesaMes', label:'Despesas do Mês', value: fmt(despesaMes), cls:'neg'},
     {key:'resultadoMes', label:'Resultado do Mês', value: fmt(resultado), cls: resultado>=0?'pos':'neg'},
     {key:'cartao', label:'Fatura Cartão (em aberto)', value: fmt(faturaTotal), cls:'warn'},
-    {key:'investimento', label:'Total Investido', value: fmt(totalInvest), cls:'pos'},
+    {key:'investimento', label:'Total no Pé de Meia', value: fmt(totalInvest), cls:'pos'},
     {key:'divida', label:'Total em Dívidas', value: fmt(totalDividas), cls:'neg'},
   ];
   document.getElementById('summaryCards').innerHTML = cards.map(c => `
@@ -2213,7 +2261,7 @@ function getRazaoConfig(key){
     total = itens.reduce((s,l)=>s+Number(l.valor),0);
   } else if(key === 'investimento'){
     itens = data.lancamentos.filter(l=>l.tipo==='investimento');
-    titulo = 'Razão — Investimentos';
+    titulo = 'Razão — Pé de Meia';
     total = itens.reduce((s,l)=>s+Number(l.valor),0);
   } else if(key === 'receitaMes'){
     itens = data.lancamentos.filter(l=>l.tipo==='receita' && itemInMonth(l, monthKey));
@@ -2322,16 +2370,36 @@ function isMobileScreen(){
   return window.matchMedia('(max-width:640px)').matches;
 }
 
-// Painéis secundários (evolução, fluxo de caixa, cartões etc.): no celular ficam minimizados por
-// padrão e só abrem quando a pessoa clica; no desktop continuam sempre visíveis (ver CSS).
-function togglePanel(panelId){
+// Painéis secundários (despesas por categoria, evolução, cartões etc.): no celular ficam escondidos
+// na Home e só abrem numa janela ao tocar no emblema correspondente (ver CSS); no desktop continuam
+// sempre visíveis inline, então esses emblemas nem aparecem lá.
+let painelModalOrigParent = null;
+let painelModalOrigNext = null;
+
+function abrirPainelModal(panelId){
   const panel = document.getElementById(panelId);
   if(!panel) return;
-  const expandindo = !panel.classList.contains('expanded');
-  panel.classList.toggle('expanded');
-  if(expandindo){
-    requestAnimationFrame(() => Object.values(charts).forEach(c => c && c.resize && c.resize()));
+  painelModalOrigParent = panel.parentNode;
+  painelModalOrigNext = panel.nextSibling;
+  panel.style.display = 'block';
+  document.getElementById('painelModalBody').appendChild(panel);
+  document.getElementById('painelModal').style.display = 'flex';
+  // Mover o painel para dentro do modal não dispara o auto-resize do Chart.js (o gráfico foi
+  // criado enquanto o painel estava com display:none), então recriamos os gráficos agora que o
+  // container já tem um tamanho real — precisa ser depois de um tick pra pegar o layout atualizado.
+  setTimeout(() => { renderCharts(); renderFluxoCaixa(); }, 0);
+}
+
+function fecharPainelModal(){
+  if(!painelModalOrigParent) return;
+  const panel = document.getElementById('painelModalBody').firstElementChild;
+  if(panel){
+    panel.style.display = '';
+    painelModalOrigParent.insertBefore(panel, painelModalOrigNext);
   }
+  document.getElementById('painelModal').style.display = 'none';
+  painelModalOrigParent = null;
+  painelModalOrigNext = null;
 }
 
 function toggleTopDespesas(){
@@ -2526,12 +2594,12 @@ function renderInvestimentos(){
   // aqui na lista só mostramos os que não têm meta vinculada.
   const itens = data.lancamentos.filter(l => l.tipo === 'investimento' && !l.meta).sort((a,b)=>b.data.localeCompare(a.data));
   if(itens.length === 0){
-    list.innerHTML = metas.length === 0 ? '<div class="empty">Nenhum investimento cadastrado.</div>' : '';
+    list.innerHTML = metas.length === 0 ? '<div class="empty">Nenhum valor no pé de meia ainda.</div>' : '';
   } else {
     list.innerHTML = itens.map(i => `
       <div class="list-item">
         <div>
-          <div>${i.descricao || 'Investimento'}</div>
+          <div>${i.descricao || 'Pé de meia'}</div>
           <div class="meta">${i.tipoInvestimento || '-'}</div>
         </div>
         <div class="actions">
