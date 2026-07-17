@@ -606,8 +606,9 @@
       <input type="date" id="lancVencimento">
     </div>
     <div class="field" id="fieldParcelas">
-      <label>Parcelas restantes</label>
+      <label id="lancParcelasLabel">Parcelas restantes</label>
       <input type="number" min="1" id="lancParcelas" placeholder="1">
+      <span class="hint" id="lancParcelasHint"></span>
     </div>
     <div class="field" id="fieldTipoInvestimento">
       <label>Tipo de investimento</label>
@@ -1181,7 +1182,7 @@ function updateFormFieldsVisibility(tipo){
     fieldCartaoNome: mostrarCartaoNome,
     fieldLimite: tipo === 'cartao',
     fieldVencimento: tipo === 'cartao' || tipo === 'divida',
-    fieldParcelas: tipo === 'divida',
+    fieldParcelas: tipo === 'divida' || tipo === 'cartao',
     fieldTipoInvestimento: tipo === 'investimento',
     fieldMetaInvestimento: tipo === 'investimento',
     fieldFormaConta: tipo === 'receita' || tipo === 'despesa' || tipo === 'conta'
@@ -1192,6 +1193,10 @@ function updateFormFieldsVisibility(tipo){
   document.getElementById('lancCartaoNomeLabel').textContent = tipo === 'cartao'
     ? 'Nome do cartão'
     : 'Cartão que está pagando';
+  document.getElementById('lancParcelasLabel').textContent = tipo === 'cartao' ? 'Parcelas' : 'Parcelas restantes';
+  document.getElementById('lancParcelasHint').textContent = tipo === 'cartao'
+    ? 'Informe mais de 1 para lançar os meses seguintes automaticamente.'
+    : '';
   if(tipo === 'receita' || tipo === 'despesa' || tipo === 'cartao') populateCategoriaSelect();
   if(tipo === 'investimento') populateMetaInvestimentoSelect();
 }
@@ -2331,7 +2336,25 @@ document.getElementById('lancForm').addEventListener('submit', function(e){
   };
   if(!entry.data || entry.valor <= 0) return;
 
-  if(editingId){
+  // Compra no cartão em N parcelas: em vez de um único lançamento, cria automaticamente
+  // um lançamento por mês (mesmo valor da parcela), avançando data e vencimento.
+  const numParcelasCartao = tipo === 'cartao' ? (parseInt(document.getElementById('lancParcelas').value) || 1) : 1;
+  if(!editingId && tipo === 'cartao' && numParcelasCartao > 1){
+    let dataAtual = entry.data;
+    let vencimentoAtual = entry.vencimento;
+    for(let i = 0; i < numParcelasCartao; i++){
+      if(i > 0){
+        dataAtual = addOneMonth(dataAtual);
+        if(vencimentoAtual) vencimentoAtual = addOneMonth(vencimentoAtual);
+      }
+      data.lancamentos.push(Object.assign({}, entry, {
+        id: uid(),
+        data: dataAtual,
+        vencimento: vencimentoAtual,
+        descricao: (entry.descricao ? entry.descricao + ' ' : '') + `(parcela ${i + 1}/${numParcelasCartao})`
+      }));
+    }
+  } else if(editingId){
     const idx = data.lancamentos.findIndex(l => l.id === editingId);
     if(idx > -1) data.lancamentos[idx] = entry;
   } else {
