@@ -230,6 +230,7 @@
       <div class="field"><label>Senha</label><input type="password" id="loginSenha" required minlength="6"></div>
       <button type="submit">Entrar</button>
       <button type="button" class="secondary" id="signupBtn">Criar conta</button>
+      <button type="button" class="secondary" id="installAppBtnLogin" style="display:none; margin-top:8px;">📲 Instalar app</button>
     </form>
     <div id="loginError"></div>
     <div id="logoutNotice"></div>
@@ -335,6 +336,7 @@
   <div class="sub">Registre receitas, despesas, cartões de crédito, dívidas, conta corrente e investimentos. Clique nos cards para ver o razão de cada um.</div>
   <div class="user-bar">
     <span id="userEmailDisplay"></span>
+    <button class="secondary small" id="installAppBtn" style="display:none;">📲 Instalar app</button>
     <button class="secondary small" id="logoutBtn">Sair / Trocar de conta</button>
   </div>
 </div>
@@ -659,6 +661,50 @@ document.getElementById('logoutBtn').addEventListener('click', function(){
   logoutManual = true;
   auth.signOut();
 });
+
+// ---------- Instalar app (PWA) ----------
+(function(){
+  const btnLogin = document.getElementById('installAppBtnLogin');
+  const btnApp = document.getElementById('installAppBtn');
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  let deferredPrompt = null;
+
+  if(isStandalone) return; // já instalado, não mostra botão
+
+  function showButtons(){
+    btnLogin.style.display = 'inline-block';
+    btnApp.style.display = 'inline-block';
+  }
+
+  function handleClick(){
+    if(deferredPrompt){
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.finally(function(){ deferredPrompt = null; });
+    } else if(isIOS){
+      alert('Para instalar o app no iPhone:\n\n1. Toque no ícone de Compartilhar (□ com seta para cima) na barra do Safari.\n2. Escolha "Adicionar à Tela de Início".\n3. Toque em "Adicionar".\n\nO ícone do Micelc vai aparecer na tela inicial como um app.');
+    } else {
+      alert('Para instalar: abra o menu do navegador (⋮ ou •••) e escolha "Instalar app" ou "Adicionar à tela inicial".');
+    }
+  }
+
+  window.addEventListener('beforeinstallprompt', function(e){
+    e.preventDefault();
+    deferredPrompt = e;
+    showButtons();
+  });
+
+  if(isIOS) showButtons();
+
+  btnLogin.addEventListener('click', handleClick);
+  btnApp.addEventListener('click', handleClick);
+
+  window.addEventListener('appinstalled', function(){
+    btnLogin.style.display = 'none';
+    btnApp.style.display = 'none';
+    deferredPrompt = null;
+  });
+})();
 
 // ---------- Dados / App ----------
 const CATEGORIAS_DESPESA = ['Moradia','Alimentação','Transporte','Lazer','Saúde','Educação','Cartão de Crédito','Dívidas','Investimento','Outros'];
