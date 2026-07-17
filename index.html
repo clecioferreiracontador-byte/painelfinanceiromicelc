@@ -27,8 +27,9 @@
   }
   .header-block{text-align:center; margin-bottom:24px; position:relative;}
   h1{font-size:1.9rem; margin:0 0 6px 0; letter-spacing:.02em;}
-  .app-logo{display:block; margin:0 auto 10px; width:76px; height:76px; border-radius:20px; box-shadow:0 8px 24px rgba(0,0,0,0.45);}
-  .login-card .app-logo{width:64px; height:64px; border-radius:17px; margin-bottom:14px;}
+  .app-logo{display:block; margin:0 auto 8px; width:76px; height:76px; border-radius:20px; box-shadow:0 8px 24px rgba(0,0,0,0.45);}
+  .login-card .app-logo{width:64px; height:64px; border-radius:17px; margin-bottom:8px;}
+  .app-logo-name{display:block; text-align:center; font-weight:700; letter-spacing:.04em; color:var(--text); font-size:1rem; margin-bottom:14px;}
   .sub{color:var(--muted); font-size:0.9rem;}
   .user-bar{display:flex; align-items:center; justify-content:center; gap:12px; margin-top:10px; font-size:0.8rem; color:var(--muted);}
   .cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin-bottom:28px;}
@@ -93,7 +94,9 @@
   footer{color:var(--muted); font-size:0.75rem; text-align:center; margin-top:20px;}
   .actions-cell{display:flex; gap:6px;}
 
-  #loadingScreen{display:flex; align-items:center; justify-content:center; min-height:60vh; color:var(--muted); font-size:0.95rem;}
+  #loadingScreen{display:flex; align-items:center; justify-content:center; min-height:60vh;}
+  .loading-logo{width:64px; height:64px; border-radius:17px; animation:pulseLogo 1.1s ease-in-out infinite;}
+  @keyframes pulseLogo{ 0%,100%{transform:scale(1); opacity:1;} 50%{transform:scale(0.86); opacity:0.55;} }
   #loginScreen{display:none; min-height:80vh; align-items:center; justify-content:center;}
   .login-card{background:var(--card); border:1px solid var(--border); border-radius:14px; padding:32px; width:100%; max-width:360px;}
   .login-card h2{text-align:center; margin:0 0 4px 0;}
@@ -109,16 +112,22 @@
   .modal-header{display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; gap:10px;}
   .modal-header h3{margin:0; font-size:1.05rem;}
 
-  /* Botões pequenos no canto (só aparecem logado) */
-  .corner-btn{
-    position:fixed; left:16px; z-index:950; background:var(--purple); color:white;
-    border:none; border-radius:10px; padding:9px 14px; font-size:0.78rem; font-weight:700; cursor:pointer;
-    box-shadow:0 2px 10px rgba(0,0,0,0.4); align-items:center; gap:6px;
+  /* Barra de navegação inferior fixa (só aparece logado), estilo apps de banco */
+  body.has-bottom-nav{ padding-bottom:84px; }
+  .bottom-nav{
+    position:fixed; left:0; right:0; bottom:0; z-index:950;
+    display:none; justify-content:space-around; align-items:stretch;
+    background:var(--card); border-top:1px solid var(--border);
+    box-shadow:0 -2px 12px rgba(0,0,0,0.35);
+    padding:6px 6px calc(6px + env(safe-area-inset-bottom));
   }
-  .corner-btn:hover{opacity:0.9;}
-  #orcamentoIconBtn{ top:16px; }
-  #provisoesIconBtn{ top:64px; }
-  #olhoValoresBtn{ left:auto; right:16px; top:16px; padding:9px 12px; font-size:1rem; }
+  .bottom-nav-btn{
+    flex:1; max-width:120px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+    background:none; border:none; color:var(--muted); cursor:pointer; padding:6px 4px; border-radius:10px;
+  }
+  .bottom-nav-btn:hover{ background:rgba(255,255,255,0.05); }
+  .bottom-nav-btn .bn-icon{ font-size:1.25rem; color:var(--blue); }
+  .bottom-nav-btn .bn-label{ font-size:0.68rem; font-weight:600; }
 
   body.valores-ocultos .pos,
   body.valores-ocultos .neg,
@@ -187,9 +196,6 @@
     .field input, .field select{ width:100%; }
     input, select{ font-size:0.82rem; padding:7px 8px; min-width:0; }
 
-    /* Esconde os textos explicativos longos (parágrafos de ajuda) — mantém só os avisos curtos e essenciais */
-    .hint-desktop-only{ display:none; }
-
     table{ font-size:0.74rem; }
     th, td{ padding:6px 4px; }
     .tbl-wrap{ max-height:260px; }
@@ -209,25 +215,20 @@
     .modal-card{ padding:14px; max-height:88vh; }
     .modal-header h3{ font-size:0.92rem; }
 
-    /* Botões do canto viram ícones redondos e compactos, sem o texto, pra não atrapalhar a tela */
-    .corner-btn{
-      padding:0; width:38px; height:38px; border-radius:50%;
-      display:flex; align-items:center; justify-content:center; font-size:1rem; gap:0;
-    }
-    .corner-btn .corner-btn-label{ display:none; }
-    #orcamentoIconBtn{ top:10px; left:10px; }
-    #provisoesIconBtn{ top:54px; left:10px; }
-    #olhoValoresBtn{ top:10px; right:10px; width:38px; height:38px; padding:0; }
+    body.has-bottom-nav{ padding-bottom:76px; }
+    .bottom-nav-btn .bn-icon{ font-size:1.15rem; }
+    .bottom-nav-btn .bn-label{ font-size:0.62rem; }
   }
 </style>
 </head>
 <body>
 
-<div id="loadingScreen">Carregando...</div>
+<div id="loadingScreen"><img src="icons/icon-192.png" alt="Micelc" class="loading-logo"></div>
 
 <div id="loginScreen">
   <div class="login-card">
     <img src="icons/icon-192.png" alt="Micelc" class="app-logo">
+    <span class="app-logo-name">Micelc</span>
     <div class="sub">Entre com e-mail e senha para acessar seus dados de qualquer aparelho.</div>
     <form id="loginForm">
       <div class="field"><label>E-mail</label><input type="email" id="loginEmail" required></div>
@@ -241,9 +242,11 @@
   </div>
 </div>
 
-<button id="orcamentoIconBtn" class="corner-btn" onclick="abrirOrcamento()" style="display:none;">📅<span class="corner-btn-label"> Orçamento</span></button>
-<button id="provisoesIconBtn" class="corner-btn" onclick="abrirProvisoes()" style="display:none;">📌<span class="corner-btn-label"> Provisões</span></button>
-<button id="olhoValoresBtn" class="corner-btn" onclick="toggleValores()" title="Mostrar/ocultar valores" style="display:none;">👁️</button>
+<nav id="bottomNav" class="bottom-nav">
+  <button id="orcamentoIconBtn" class="bottom-nav-btn" onclick="abrirOrcamento()"><span class="bn-icon">📅</span><span class="bn-label">Orçamento</span></button>
+  <button id="provisoesIconBtn" class="bottom-nav-btn" onclick="abrirProvisoes()"><span class="bn-icon">📌</span><span class="bn-label">Provisões</span></button>
+  <button id="olhoValoresBtn" class="bottom-nav-btn" onclick="toggleValores()" title="Mostrar/ocultar valores"><span class="bn-icon" id="olhoValoresIcon">👁️</span><span class="bn-label">Valores</span></button>
+</nav>
 
 <div id="orcamentoModal" class="modal-overlay" onclick="if(event.target===this) fecharOrcamento()">
   <div class="modal-card" style="max-width:420px;">
@@ -274,7 +277,6 @@
       <h3>Provisões (receitas/despesas futuras)</h3>
       <button class="secondary small" onclick="fecharProvisoes()">Fechar</button>
     </div>
-    <div class="hint hint-desktop-only" style="margin-bottom:12px;">Cadastre já receitas e despesas esperadas para os próximos meses. Quando chegar a hora, use "Lançar agora" para transformar em um lançamento real. Use "📅 Lembrete" para abrir o Google Agenda já preenchido com um aviso 1 dia antes do vencimento (você só confirma "Salvar" por lá).</div>
     <div class="month-filter">
       <label style="color:var(--muted); font-size:0.85rem;">Mês da provisão:</label>
       <input type="month" id="provisaoMesInput" onchange="renderProvisoes()">
@@ -319,7 +321,6 @@
       </div>
       <button type="submit">Adicionar</button>
     </form>
-    <div class="hint hint-desktop-only" style="margin-bottom:10px;">Marque "Se repete" para casos como salário, despesas fixas ou parcelas fixas: a provisão é criada automaticamente todo mês (mantendo o mesmo dia de vencimento). Para Despesa na categoria "Cartão de Crédito", em vez do mês final você informa o número de parcelas e o sistema calcula sozinho até qual mês vai a última.</div>
     <div class="totals-line" style="margin-top:14px;">
       <span>Receita prevista</span><span class="pos" id="provisaoTotalReceita">R$ 0,00</span>
     </div>
@@ -337,6 +338,7 @@
 
 <div class="header-block">
   <img src="icons/icon-192.png" alt="Micelc" class="app-logo">
+  <span class="app-logo-name">Micelc</span>
   <div class="sub">Registre receitas, despesas, cartões de crédito, dívidas, conta corrente e investimentos. Clique nos cards para ver o razão de cada um.</div>
   <div class="user-bar">
     <span id="userEmailDisplay"></span>
@@ -349,7 +351,6 @@
 
 <div class="panel row-gap">
   <h2><span class="title">➕ Lançamentos</span></h2>
-  <div class="hint hint-desktop-only" style="margin-bottom:10px;">Escolha o tipo para liberar os campos certos: Receita, Despesa, Cartão de Crédito, Dívida, Conta Corrente ou Investimento. Receita soma e Despesa desconta automaticamente do saldo da conta corrente. O tipo Cartão de Crédito serve só para acompanhar a fatura de cada cartão (não mexe no saldo). Ao pagar a fatura, lance como Despesa na categoria "Cartão de Crédito" e informe o nome do cartão (ou use o botão "Pagar fatura" na lista de cartões abaixo): o saldo em aberto daquele cartão é baixado automaticamente pelo valor pago. Para Receita, Despesa e Conta Corrente, escolha também se o movimento é em Espécie (dinheiro) ou em Banco, para acompanhar os dois saldos separadamente. Em Investimento, você pode vincular a uma meta (ex: "Viagem 30.000,00") para acompanhar o progresso. Use os botões no canto superior esquerdo: "Orçamento" para controlar quanto pode gastar por categoria, e "Provisões" para já deixar planejadas receitas/despesas dos próximos meses (inclusive recorrentes, com dia de vencimento e lembrete no Google Agenda). Ao lado da categoria/meta, use "+" para criar uma nova e "−" para excluir a selecionada.</div>
   <form class="inline" id="lancForm">
     <div class="field">
       <label>Data</label>
@@ -570,17 +571,15 @@ function showLoading(){
   document.getElementById('loadingScreen').style.display = 'flex';
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('appScreen').style.display = 'none';
-  document.getElementById('orcamentoIconBtn').style.display = 'none';
-  document.getElementById('provisoesIconBtn').style.display = 'none';
-  document.getElementById('olhoValoresBtn').style.display = 'none';
+  document.getElementById('bottomNav').style.display = 'none';
+  document.body.classList.remove('has-bottom-nav');
 }
 function showLogin(){
   document.getElementById('loadingScreen').style.display = 'none';
   document.getElementById('loginScreen').style.display = 'flex';
   document.getElementById('appScreen').style.display = 'none';
-  document.getElementById('orcamentoIconBtn').style.display = 'none';
-  document.getElementById('provisoesIconBtn').style.display = 'none';
-  document.getElementById('olhoValoresBtn').style.display = 'none';
+  document.getElementById('bottomNav').style.display = 'none';
+  document.body.classList.remove('has-bottom-nav');
   fecharOrcamento();
   fecharProvisoes();
   document.getElementById('loginForm').reset();
@@ -593,15 +592,14 @@ function showApp(){
   document.getElementById('loadingScreen').style.display = 'none';
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('appScreen').style.display = 'block';
-  document.getElementById('orcamentoIconBtn').style.display = 'flex';
-  document.getElementById('provisoesIconBtn').style.display = 'flex';
-  document.getElementById('olhoValoresBtn').style.display = 'flex';
+  document.getElementById('bottomNav').style.display = 'flex';
+  document.body.classList.add('has-bottom-nav');
   document.getElementById('logoutNotice').textContent = '';
 }
 
 function toggleValores(){
   const oculto = document.body.classList.toggle('valores-ocultos');
-  document.getElementById('olhoValoresBtn').textContent = oculto ? '🙈' : '👁️';
+  document.getElementById('olhoValoresIcon').textContent = oculto ? '🙈' : '👁️';
 }
 
 auth.onAuthStateChanged(function(user){
