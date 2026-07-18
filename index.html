@@ -1056,11 +1056,16 @@ function toggleRowMenu(btn, event){
   });
   if(!abrir) return;
   menu.classList.add('open');
-  // Em tabelas com scroll horizontal (celular) ou listas longas, o menu pode nascer fora da
-  // tela — se estourar a direita/embaixo, inverte para a esquerda/cima.
+  // Em tabelas com scroll horizontal (celular), listas longas OU dentro de um modal que não
+  // ocupa a tela toda, o menu pode nascer cortado — se estourar a direita/embaixo do que for
+  // mais restritivo (a tela ou o container com scroll mais próximo), inverte para esquerda/cima.
+  const limiteEl = btn.closest('.modal-card, .tbl-wrap');
+  const limiteRect = limiteEl ? limiteEl.getBoundingClientRect() : null;
+  const maxRight = limiteRect ? Math.min(window.innerWidth, limiteRect.right) : window.innerWidth;
+  const maxBottom = limiteRect ? Math.min(window.innerHeight, limiteRect.bottom) : window.innerHeight;
   const r = menu.getBoundingClientRect();
-  if(r.right > window.innerWidth){ menu.style.right = 'auto'; menu.style.left = '0'; }
-  if(r.bottom > window.innerHeight){
+  if(r.right > maxRight){ menu.style.right = 'auto'; menu.style.left = '0'; }
+  if(r.bottom > maxBottom){
     menu.style.top = 'auto'; menu.style.bottom = '100%';
     menu.style.marginTop = '0'; menu.style.marginBottom = '4px';
   }
@@ -3175,8 +3180,13 @@ function renderInvestimentos(){
         </div>
         <div class="actions">
           <span class="pos" style="margin-right:6px;">${fmt(i.valor)}</span>
-          <button class="edit" onclick="editLancamento('${i.id}')">Editar</button>
-          <button class="cartao-acao" onclick="deleteLancamento('${i.id}')" title="Excluir">x</button>
+          <div class="row-menu-wrap">
+            <button class="row-menu-btn" onclick="toggleRowMenu(this, event)" title="Mais ações">⋮</button>
+            <div class="row-menu">
+              <button onclick="editLancamento('${i.id}')">Editar</button>
+              <button class="row-menu-danger" onclick="deleteLancamento('${i.id}')">Excluir</button>
+            </div>
+          </div>
         </div>
       </div>
     `).join('');
