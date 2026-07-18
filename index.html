@@ -41,14 +41,14 @@
   .login-card .app-logo{width:80px; height:80px; border-radius:20px; margin-bottom:8px;}
   .app-logo-name{display:block; text-align:center; font-weight:700; letter-spacing:.04em; color:var(--text); font-size:1rem; margin-bottom:14px;}
   .home-banner{
-    background-color:#ffffff; border-radius:0; padding:22px 20px 16px;
+    background-color:var(--card2); border-radius:0; padding:22px 20px 16px;
     box-shadow:0 4px 14px rgba(0,0,0,0.18);
     margin:-24px -24px 24px -24px;
   }
   .home-banner .app-logo{ position:relative; z-index:1; }
-  .home-banner .home-greeting{ position:relative; z-index:1; color:#0f172a; }
-  .home-banner-name{ font-weight:700; letter-spacing:.06em; color:#15803d; font-size:0.85rem; margin:2px 0 8px; }
-  .home-banner .sub{ position:relative; z-index:1; color:#64748b; }
+  .home-banner .home-greeting{ position:relative; z-index:1; color:var(--text); }
+  .home-banner-name{ font-weight:700; letter-spacing:.06em; color:var(--green); font-size:0.85rem; margin:2px 0 8px; }
+  .home-banner .sub{ position:relative; z-index:1; color:var(--muted); }
   .sub{color:var(--muted); font-size:0.9rem;}
   .cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin-bottom:28px;}
   .card{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px;}
@@ -1619,6 +1619,14 @@ document.getElementById('signupBtn').addEventListener('click', function(){
 });
 document.getElementById('logoutBtn').addEventListener('click', function(){
   logoutManual = true;
+  // Esconde a foto/sino/menu na hora, sem esperar o auth.signOut() (assíncrono) ir e voltar
+  // do Firebase — showLogin() (chamado depois, via onAuthStateChanged) já faz isso de novo,
+  // mas aqui garante que não fica nem um instante visível.
+  closeAccountMenu();
+  closeNotifPanel();
+  document.getElementById('accountMenuWrap').style.display = 'none';
+  document.getElementById('perfilWrap').style.display = 'none';
+  document.getElementById('notifWrap').style.display = 'none';
   auth.signOut();
 });
 
