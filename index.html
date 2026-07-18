@@ -1140,32 +1140,46 @@ function closeNotifPanel(){
 }
 
 // Menu "3 pontinhos" das linhas de histórico (Lançamentos, Razão, Provisões).
+// O menu usa position:fixed com coordenadas calculadas aqui (em vez de position:absolute
+// ancorado no botão) — isso evita que ele seja cortado por um ancestral com scroll (ex: a
+// tabela do Razão ou um modal pequeno), já que fixed escapa do recorte de overflow desses
+// containers. Antes usava absolute+flip, mas isso podia "virar" o menu pra cima e ainda assim
+// ele ficar cortado pelo topo da tabela (que também tem overflow), escondendo "Editar".
 function toggleRowMenu(btn, event){
   if(event) event.stopPropagation();
   const menu = btn.closest('.row-menu-wrap').querySelector('.row-menu');
   const abrir = !menu.classList.contains('open');
+  fecharTodosOsRowMenus();
+  if(!abrir) return;
+
+  menu.classList.add('open');
+  menu.style.position = 'fixed';
+  menu.style.margin = '0';
+  const btnRect = btn.getBoundingClientRect();
+  const menuRect = menu.getBoundingClientRect();
+
+  let left = btnRect.right - menuRect.width;
+  left = Math.max(4, Math.min(left, window.innerWidth - menuRect.width - 4));
+
+  let top = btnRect.bottom + 4;
+  if(top + menuRect.height > window.innerHeight - 4){
+    top = btnRect.top - menuRect.height - 4;
+  }
+  top = Math.max(4, top);
+
+  menu.style.left = left + 'px';
+  menu.style.top = top + 'px';
+  menu.style.right = 'auto';
+  menu.style.bottom = 'auto';
+}
+function fecharTodosOsRowMenus(){
   document.querySelectorAll('.row-menu.open').forEach(m => {
     m.classList.remove('open');
-    m.style.left = ''; m.style.right = ''; m.style.top = ''; m.style.bottom = ''; m.style.marginTop = ''; m.style.marginBottom = '';
+    m.style.position = ''; m.style.left = ''; m.style.top = ''; m.style.right = ''; m.style.bottom = ''; m.style.margin = '';
   });
-  if(!abrir) return;
-  menu.classList.add('open');
-  // Em tabelas com scroll horizontal (celular), listas longas OU dentro de um modal que não
-  // ocupa a tela toda, o menu pode nascer cortado — se estourar a direita/embaixo do que for
-  // mais restritivo (a tela ou o container com scroll mais próximo), inverte para esquerda/cima.
-  const limiteEl = btn.closest('.modal-card, .tbl-wrap');
-  const limiteRect = limiteEl ? limiteEl.getBoundingClientRect() : null;
-  const maxRight = limiteRect ? Math.min(window.innerWidth, limiteRect.right) : window.innerWidth;
-  const maxBottom = limiteRect ? Math.min(window.innerHeight, limiteRect.bottom) : window.innerHeight;
-  const r = menu.getBoundingClientRect();
-  if(r.right > maxRight){ menu.style.right = 'auto'; menu.style.left = '0'; }
-  if(r.bottom > maxBottom){
-    menu.style.top = 'auto'; menu.style.bottom = '100%';
-    menu.style.marginTop = '0'; menu.style.marginBottom = '4px';
-  }
 }
 function closeAllRowMenus(){
-  document.querySelectorAll('.row-menu.open').forEach(m => m.classList.remove('open'));
+  fecharTodosOsRowMenus();
 }
 document.addEventListener('click', function(e){
   const wrap = document.getElementById('accountMenuWrap');
