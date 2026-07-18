@@ -30,7 +30,7 @@
     background:linear-gradient(160deg,#f8fafc,#e2e8f0);
   }
   *{box-sizing:border-box;}
-  html, body{ overscroll-behavior:none; }
+  html, body{ overscroll-behavior:none; touch-action:pan-y; }
   body{
     margin:0; font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;
     background:linear-gradient(160deg,#0f172a,#111827); color:var(--text); padding:24px;
@@ -564,6 +564,8 @@
     <div class="month-filter">
       <label style="color:var(--muted); font-size:0.85rem;">Mês de referência (filtra a lista abaixo):</label>
       <input type="month" id="provisaoMesInput" onchange="renderProvisoes()">
+      <label style="color:var(--muted); font-size:0.85rem; margin-left:8px;">Vencimento:</label>
+      <input type="date" id="provisaoVencimento" class="mini-cal-input" form="provisaoForm" required>
     </div>
     <form class="inline" id="provisaoForm">
       <div class="field">
@@ -584,10 +586,6 @@
       <div class="field" style="min-width:140px;">
         <label>Descrição</label>
         <input type="text" id="provisaoDescricao" placeholder="opcional">
-      </div>
-      <div class="field">
-        <label>Vencimento</label>
-        <input type="date" id="provisaoVencimento" required>
       </div>
       <div class="field" style="flex-direction:row; align-items:center; gap:6px; min-width:auto;">
         <input type="checkbox" id="provisaoRepete" style="min-width:auto; width:16px; height:16px;" onchange="toggleProvisaoRepeteField()">
@@ -2677,26 +2675,35 @@ function linhaLancamentoHtml(item){
     : (item.tipo === 'despesa' || item.tipo === 'divida')
       ? 'neg'
       : 'info';
-  let acoesExtra = '';
-  if(item.tipo === 'divida' && Number(item.parcelas) > 0){
-    acoesExtra = `<button onclick="baixarParcela('${item.id}')">Baixar parcela</button>`;
-  }
   const tooltip = [detalheFor(item), item.descricao].filter(Boolean).join(' — ');
+  // Pé de Meia usa "x" + lápis sempre visíveis (sem menu escondido); os demais tipos usam
+  // o menu "3 pontinhos" (podem ter uma ação extra, como Baixar parcela de dívida).
+  let acoes;
+  if(item.tipo === 'investimento'){
+    acoes = `
+      <button class="cartao-acao" onclick="editLancamento('${item.id}')" title="Editar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+      <button class="cartao-acao" onclick="deleteLancamento('${item.id}')" title="Excluir">x</button>`;
+  } else {
+    let acoesExtra = '';
+    if(item.tipo === 'divida' && Number(item.parcelas) > 0){
+      acoesExtra = `<button onclick="baixarParcela('${item.id}')">Baixar parcela</button>`;
+    }
+    acoes = `
+      <div class="row-menu-wrap">
+        <button class="row-menu-btn" onclick="toggleRowMenu(this, event)" title="Mais ações">⋮</button>
+        <div class="row-menu">
+          ${acoesExtra}
+          <button onclick="editLancamento('${item.id}')">Editar</button>
+          <button class="row-menu-danger" onclick="deleteLancamento('${item.id}')">Excluir</button>
+        </div>
+      </div>`;
+  }
   return `
     <tr title="${tooltip.replace(/"/g,'&quot;')}">
       <td>${fmtDate(item.data)}</td>
       <td><span class="tag ${tag.cls}">${tag.label}</span></td>
       <td class="${corValor}">${fmt(item.valor)}</td>
-      <td class="actions-cell">
-        <div class="row-menu-wrap">
-          <button class="row-menu-btn" onclick="toggleRowMenu(this, event)" title="Mais ações">⋮</button>
-          <div class="row-menu">
-            ${acoesExtra}
-            <button onclick="editLancamento('${item.id}')">Editar</button>
-            <button class="row-menu-danger" onclick="deleteLancamento('${item.id}')">Excluir</button>
-          </div>
-        </div>
-      </td>
+      <td class="actions-cell">${acoes}</td>
     </tr>`;
 }
 
@@ -3180,13 +3187,8 @@ function renderInvestimentos(){
         </div>
         <div class="actions">
           <span class="pos" style="margin-right:6px;">${fmt(i.valor)}</span>
-          <div class="row-menu-wrap">
-            <button class="row-menu-btn" onclick="toggleRowMenu(this, event)" title="Mais ações">⋮</button>
-            <div class="row-menu">
-              <button onclick="editLancamento('${i.id}')">Editar</button>
-              <button class="row-menu-danger" onclick="deleteLancamento('${i.id}')">Excluir</button>
-            </div>
-          </div>
+          <button class="cartao-acao" onclick="editLancamento('${i.id}')" title="Editar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+          <button class="cartao-acao" onclick="deleteLancamento('${i.id}')" title="Excluir">x</button>
         </div>
       </div>
     `).join('');
