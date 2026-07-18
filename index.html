@@ -1792,7 +1792,7 @@ function updateFormFieldsVisibility(tipo){
   document.getElementById('lancParcelasLabel').textContent = tipo === 'cartao' ? 'Parcelas' : 'Parcelas restantes';
   document.getElementById('lancParcelasHint').textContent = tipo === 'cartao'
     ? 'Informe mais de 1 para lançar os meses seguintes automaticamente.'
-    : '';
+    : (tipo === 'divida' ? 'Informe o valor de cada parcela — o total da dívida é calculado automaticamente (valor × parcelas).' : '');
   if(tipo === 'receita' || tipo === 'despesa' || tipo === 'cartao') populateCategoriaSelect();
   if(tipo === 'investimento') populateMetaInvestimentoSelect();
 }
@@ -3120,6 +3120,12 @@ document.getElementById('lancForm').addEventListener('submit', function(e){
     forma: usaForma ? document.getElementById('lancFormaConta').value : null
   };
   if(!entry.data || entry.valor <= 0) return;
+
+  // Nova dívida com parcelas: o valor informado é o da parcela, então o total da dívida
+  // é composto automaticamente (valor da parcela × parcelas em aberto).
+  if(!editingId && tipo === 'divida' && Number(entry.parcelas) > 1){
+    entry.valor = Number((entry.valor * entry.parcelas).toFixed(2));
+  }
 
   // Compra no cartão em N parcelas: em vez de um único lançamento, cria automaticamente
   // um lançamento por mês (mesmo valor da parcela), avançando data e vencimento.
