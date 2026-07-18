@@ -480,6 +480,7 @@
         <span>Gasto: <span id="orcamentoTotalGasto" class="blur-target">R$ 0,00</span></span>
         <span>Restante: <span id="orcamentoTotalRestante" class="blur-target">R$ 0,00</span></span>
       </div>
+      <div class="hint" style="text-align:right; margin-top:2px;"><span id="orcamentoTotalPct"></span></div>
     </div>
     <div class="hint" style="margin-bottom:8px;">Orçamento por categoria (despesas + lançamentos de cartão)</div>
     <div id="orcamentoCategoriasList"></div>
@@ -1999,6 +2000,13 @@ function salvarOrcamentoCategoria(categoria, valor){
 // Atualiza só a barra/restante na hora (sem re-renderizar a lista inteira, que faria o campo
 // perder o foco enquanto a pessoa ainda está digitando). O valor só é salvo no Firestore
 // quando o campo perde o foco (onchange já cuidava disso e continua cuidando).
+// Texto da porcentagem: mostra o valor real, sem limitar em 100% (ex: 130%, 148%), pra deixar
+// claro o quanto passou do previsto — só a largura da barra em si é que fica travada em 100%.
+function textoPctOrcamento(pctReal, limiteDefinido){
+  if(!limiteDefinido) return '';
+  return pctReal.toFixed(0) + '%' + (pctReal > 100 ? ' (excedeu)' : '');
+}
+
 function atualizarBarraOrcamentoTotalLive(valorStr){
   const total = parseFloat(valorStr) || 0;
   const monthKey = currentMonthKey();
@@ -2006,13 +2014,17 @@ function atualizarBarraOrcamentoTotalLive(valorStr){
   const gastoPorCat = gastoPorCategoriaNoMes(monthKey);
   const gastoTotal = Object.values(gastoPorCat).reduce((s,v)=>s+v,0);
   const restante = total - gastoTotal;
-  const pct = total ? Math.min(100, (gastoTotal / total) * 100) : 0;
+  const pctRealTotal = total ? (gastoTotal / total) * 100 : 0;
+  const pct = Math.min(100, pctRealTotal);
   const restanteEl = document.getElementById('orcamentoTotalRestante');
   restanteEl.textContent = restante >= 0 ? fmt(restante) : ('Excedido em ' + fmt(Math.abs(restante)));
   restanteEl.classList.toggle('neg', restante < 0);
   const bar = document.getElementById('orcamentoTotalBar');
   bar.style.width = pct + '%';
   bar.style.background = corBarraOrcamento(pct);
+  const pctEl = document.getElementById('orcamentoTotalPct');
+  pctEl.textContent = textoPctOrcamento(pctRealTotal, total > 0);
+  pctEl.classList.toggle('neg', pctRealTotal > 100);
 }
 
 function atualizarBarraOrcamentoCategoriaLive(inputEl, categoria){
@@ -2030,11 +2042,11 @@ function atualizarBarraOrcamentoCategoriaLive(inputEl, categoria){
   bar.style.background = corBarraOrcamento(pct);
   const spans = row.querySelectorAll('.hint span');
   if(spans[0]){
-    spans[0].textContent = 'Gasto ' + fmt(gasto) + (ultrapassou ? ' (excedeu)' : '');
+    spans[0].textContent = 'Gasto ' + fmt(gasto);
     spans[0].classList.toggle('neg', ultrapassou);
   }
   if(spans[1]){
-    spans[1].textContent = limite ? pctReal.toFixed(0) + '%' : '';
+    spans[1].textContent = textoPctOrcamento(pctReal, limite > 0);
     spans[1].classList.toggle('neg', ultrapassou);
   }
 }
@@ -2072,6 +2084,9 @@ function renderOrcamento(){
   const barTotal = document.getElementById('orcamentoTotalBar');
   barTotal.style.width = pctTotal + '%';
   barTotal.style.background = corBarraOrcamento(pctTotal);
+  const pctTotalEl = document.getElementById('orcamentoTotalPct');
+  pctTotalEl.textContent = textoPctOrcamento(pctTotalReal, orc.total > 0);
+  pctTotalEl.classList.toggle('neg', pctTotalReal > 100);
 
   const todasCategorias = [...new Set(CATEGORIAS_DESPESA.concat(data.categoriasDespesa||[]).concat(Object.keys(gastoPorCat)))];
   const list = document.getElementById('orcamentoCategoriasList');
@@ -2090,8 +2105,8 @@ function renderOrcamento(){
         </div>
         <div class="orc-bar-wrap"><div class="orc-bar" style="width:${pct}%; background:${corBarraOrcamento(pct)};"></div></div>
         <div class="hint" style="display:flex; justify-content:space-between; margin-top:2px;">
-          <span class="${ultrapassou ? 'neg' : ''}">Gasto ${fmt(gasto)}${ultrapassou ? ' (excedeu)' : ''}</span>
-          <span class="${ultrapassou ? 'neg' : ''}">${limite ? pctReal.toFixed(0) + '%' : ''}</span>
+          <span class="${ultrapassou ? 'neg' : ''}">Gasto ${fmt(gasto)}</span>
+          <span class="${ultrapassou ? 'neg' : ''}">${textoPctOrcamento(pctReal, limite > 0)}</span>
         </div>
       </div>
     `;
