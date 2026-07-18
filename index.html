@@ -203,6 +203,21 @@
   .account-menu-item .ami-icon{ display:flex; color:var(--muted); }
   .account-menu-item .ami-icon svg{ width:18px; height:18px; }
 
+  /* Sino de notificações, à esquerda do menu de conta */
+  .notif-wrap{ position:fixed; top:16px; right:74px; z-index:960; }
+  .notif-badge{
+    position:absolute; top:-2px; right:-2px; min-width:18px; height:18px; padding:0 4px;
+    background:var(--red); color:#fff; border-radius:50%; font-size:0.65rem; font-weight:700;
+    display:flex; align-items:center; justify-content:center; border:2px solid var(--card);
+  }
+  .notif-panel{ min-width:270px; max-width:320px; max-height:360px; overflow-y:auto; padding:10px; }
+  .notif-item{
+    padding:9px 10px; border-radius:8px; font-size:0.8rem; line-height:1.4; color:var(--text);
+    border-bottom:1px solid var(--border);
+  }
+  .notif-item:last-child{ border-bottom:none; }
+  .notif-item.urgente{ color:var(--red); font-weight:600; }
+
   /* Ícones monocromáticos nos títulos de seção, no mesmo padrão da barra inferior */
   .h2-icon{ display:inline-flex; color:var(--muted); }
   .h2-icon svg{ width:19px; height:19px; }
@@ -346,6 +361,8 @@
     .account-menu-wrap{ top:10px; right:10px; }
     .menu-btn{ width:46px; height:46px; }
     .menu-btn svg{ width:22px; height:22px; }
+    .notif-wrap{ top:10px; right:64px; }
+    .notif-panel{ min-width:240px; max-width:82vw; }
     .perfil-wrap{ top:10px; left:10px; }
     .avatar-btn{ width:46px; height:46px; }
     .avatar-btn svg{ width:21px; height:21px; }
@@ -381,6 +398,17 @@
     <img id="avatarImg" alt="Foto de perfil" style="display:none;">
   </button>
   <input type="file" id="avatarFileInput" accept="image/*" style="display:none;" onchange="processarFotoPerfil(event)">
+</div>
+
+<div id="notifWrap" class="notif-wrap" style="display:none;">
+  <button id="notifBtn" class="menu-btn" onclick="toggleNotifPanel()" title="Notificações">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+    <span id="notifBadge" class="notif-badge" style="display:none;"></span>
+  </button>
+  <div id="notifPanel" class="account-menu notif-panel">
+    <div class="account-menu-email">Alertas</div>
+    <div id="notifList"></div>
+  </div>
 </div>
 
 <div id="accountMenuWrap" class="account-menu-wrap" style="display:none;">
@@ -445,7 +473,7 @@
     <div class="orc-total-box">
       <div class="field" style="margin-bottom:0;">
         <label>Orçamento total do mês (R$)</label>
-        <input type="number" step="0.01" min="0" id="orcamentoTotalInput" placeholder="0,00" onchange="salvarOrcamentoTotal(parseFloat(this.value)||0)">
+        <input type="number" step="0.01" min="0" id="orcamentoTotalInput" placeholder="0,00" onchange="salvarOrcamentoTotal(parseFloat(this.value)||0)" oninput="atualizarBarraOrcamentoTotalLive(this.value)">
       </div>
       <div class="orc-bar-wrap"><div class="orc-bar" id="orcamentoTotalBar" style="width:0%;"></div></div>
       <div class="hint" style="display:flex; justify-content:space-between; margin-top:6px;">
@@ -873,6 +901,7 @@ function showLoading(){
   document.getElementById('bottomNav').style.display = 'none';
   document.getElementById('accountMenuWrap').style.display = 'none';
   document.getElementById('perfilWrap').style.display = 'none';
+  document.getElementById('notifWrap').style.display = 'none';
   document.body.classList.remove('has-bottom-nav');
 }
 function showLogin(){
@@ -882,12 +911,14 @@ function showLogin(){
   document.getElementById('bottomNav').style.display = 'none';
   document.getElementById('accountMenuWrap').style.display = 'none';
   document.getElementById('perfilWrap').style.display = 'none';
+  document.getElementById('notifWrap').style.display = 'none';
   document.body.classList.remove('has-bottom-nav');
   fecharLancamentos();
   fecharOrcamento();
   fecharProvisoes();
   fecharExtratos();
   closeAccountMenu();
+  closeNotifPanel();
   document.getElementById('loginForm').reset();
   document.getElementById('loginError').textContent = '';
   document.getElementById('logoutNotice').textContent = logoutManual ? 'Você saiu da conta. Entre com outro e-mail e senha para trocar de conta.' : '';
@@ -901,20 +932,31 @@ function showApp(){
   document.getElementById('bottomNav').style.display = 'flex';
   document.getElementById('accountMenuWrap').style.display = 'block';
   document.getElementById('perfilWrap').style.display = 'flex';
+  document.getElementById('notifWrap').style.display = 'block';
   document.body.classList.add('has-bottom-nav');
   document.getElementById('logoutNotice').textContent = '';
   mostrarView('homeView');
 }
 
 function toggleAccountMenu(){
+  closeNotifPanel();
   document.getElementById('accountMenu').classList.toggle('open');
 }
 function closeAccountMenu(){
   document.getElementById('accountMenu').classList.remove('open');
 }
+function toggleNotifPanel(){
+  closeAccountMenu();
+  document.getElementById('notifPanel').classList.toggle('open');
+}
+function closeNotifPanel(){
+  document.getElementById('notifPanel').classList.remove('open');
+}
 document.addEventListener('click', function(e){
   const wrap = document.getElementById('accountMenuWrap');
   if(wrap && !wrap.contains(e.target)) closeAccountMenu();
+  const notifWrap = document.getElementById('notifWrap');
+  if(notifWrap && !notifWrap.contains(e.target)) closeNotifPanel();
 });
 
 function toggleValores(){
@@ -1466,6 +1508,7 @@ let data = { lancamentos: [], categoriasReceita: [], categoriasDespesa: [], orca
 let charts = {};
 let editingId = null;
 let razaoAtualKey = null;
+let razaoFiltroNome = null;
 
 function saveData(){
   if(docRef) docRef.set(data);
@@ -1854,6 +1897,89 @@ function gastoPorCategoriaNoMes(monthKey){
   return porCat;
 }
 
+// ---------- Notificações (faturas/dívidas/provisões vencendo, orçamento estourado) ----------
+const NOTIF_DIAS_ANTECEDENCIA = 5;
+
+function diasAteData(dataStr){
+  const hoje = new Date().toISOString().slice(0,10);
+  const d1 = new Date(hoje + 'T00:00:00');
+  const d2 = new Date(dataStr + 'T00:00:00');
+  return Math.round((d2 - d1) / 86400000);
+}
+
+function textoVencimento(dias, rotulo){
+  if(dias < 0) return `${rotulo} vencida`;
+  if(dias === 0) return `${rotulo} vence hoje`;
+  return `${rotulo} vence em ${dias} dia${dias === 1 ? '' : 's'}`;
+}
+
+function calcularAlertas(){
+  const alertas = [];
+
+  cartoesAgrupados().forEach(c => {
+    if(c.total > 0 && c.vencimento){
+      const dias = diasAteData(c.vencimento);
+      if(dias <= NOTIF_DIAS_ANTECEDENCIA){
+        alertas.push({ texto: `${textoVencimento(dias, 'Fatura')} — ${c.nome} (${fmt(c.total)})`, urgente: dias < 0 });
+      }
+    }
+  });
+
+  data.lancamentos.filter(l => l.tipo === 'divida' && Number(l.parcelas) > 0 && l.vencimento).forEach(l => {
+    const dias = diasAteData(l.vencimento);
+    if(dias <= NOTIF_DIAS_ANTECEDENCIA){
+      alertas.push({ texto: `${textoVencimento(dias, 'Parcela')} — ${l.descricao || 'Dívida'} (${fmt(l.valor)})`, urgente: dias < 0 });
+    }
+  });
+
+  (data.provisoes || []).forEach(p => {
+    if(p.vencimento){
+      const dias = diasAteData(p.vencimento);
+      if(dias <= NOTIF_DIAS_ANTECEDENCIA){
+        const rotulo = p.tipo === 'receita' ? 'Receita prevista' : 'Despesa prevista';
+        alertas.push({ texto: `${textoVencimento(dias, rotulo)} — ${p.categoria} (${fmt(p.valor)})`, urgente: dias < 0 });
+      }
+    }
+  });
+
+  const monthKey = currentMonthKey();
+  if(monthKey){
+    const orc = getOrcamentoMes(monthKey);
+    const gastoPorCat = gastoPorCategoriaNoMes(monthKey);
+    Object.keys(orc.categorias || {}).forEach(cat => {
+      const limite = orc.categorias[cat];
+      const gasto = gastoPorCat[cat] || 0;
+      if(limite > 0 && gasto > limite){
+        const pct = ((gasto / limite) * 100).toFixed(0);
+        alertas.push({ texto: `Orçamento de ${cat} ultrapassado (${pct}%) — ${fmt(gasto)} de ${fmt(limite)}`, urgente: true });
+      }
+    });
+    const gastoTotal = Object.values(gastoPorCat).reduce((s,v) => s + v, 0);
+    if(orc.total > 0 && gastoTotal > orc.total){
+      alertas.push({ texto: `Orçamento total do mês ultrapassado — ${fmt(gastoTotal)} de ${fmt(orc.total)}`, urgente: true });
+    }
+  }
+
+  return alertas.sort((a,b) => (b.urgente ? 1 : 0) - (a.urgente ? 1 : 0));
+}
+
+function renderNotificacoes(){
+  const alertas = calcularAlertas();
+  const badge = document.getElementById('notifBadge');
+  if(alertas.length > 0){
+    badge.style.display = 'flex';
+    badge.textContent = alertas.length > 9 ? '9+' : alertas.length;
+  } else {
+    badge.style.display = 'none';
+  }
+  const list = document.getElementById('notifList');
+  if(alertas.length === 0){
+    list.innerHTML = '<div class="hint" style="padding:8px 10px;">Nenhum alerta no momento.</div>';
+  } else {
+    list.innerHTML = alertas.map(a => `<div class="notif-item ${a.urgente ? 'urgente' : ''}">${a.texto}</div>`).join('');
+  }
+}
+
 function salvarOrcamentoTotal(valor){
   const monthKey = currentMonthKey();
   const orc = getOrcamentoMes(monthKey);
@@ -1868,6 +1994,49 @@ function salvarOrcamentoCategoria(categoria, valor){
   orc.categorias[categoria] = valor || 0;
   saveData();
   renderOrcamento();
+}
+
+// Atualiza só a barra/restante na hora (sem re-renderizar a lista inteira, que faria o campo
+// perder o foco enquanto a pessoa ainda está digitando). O valor só é salvo no Firestore
+// quando o campo perde o foco (onchange já cuidava disso e continua cuidando).
+function atualizarBarraOrcamentoTotalLive(valorStr){
+  const total = parseFloat(valorStr) || 0;
+  const monthKey = currentMonthKey();
+  if(!monthKey) return;
+  const gastoPorCat = gastoPorCategoriaNoMes(monthKey);
+  const gastoTotal = Object.values(gastoPorCat).reduce((s,v)=>s+v,0);
+  const restante = total - gastoTotal;
+  const pct = total ? Math.min(100, (gastoTotal / total) * 100) : 0;
+  const restanteEl = document.getElementById('orcamentoTotalRestante');
+  restanteEl.textContent = restante >= 0 ? fmt(restante) : ('Excedido em ' + fmt(Math.abs(restante)));
+  restanteEl.classList.toggle('neg', restante < 0);
+  const bar = document.getElementById('orcamentoTotalBar');
+  bar.style.width = pct + '%';
+  bar.style.background = corBarraOrcamento(pct);
+}
+
+function atualizarBarraOrcamentoCategoriaLive(inputEl, categoria){
+  const limite = parseFloat(inputEl.value) || 0;
+  const monthKey = currentMonthKey();
+  if(!monthKey) return;
+  const gastoPorCat = gastoPorCategoriaNoMes(monthKey);
+  const gasto = gastoPorCat[categoria] || 0;
+  const pctReal = limite ? (gasto / limite) * 100 : 0;
+  const pct = Math.min(100, pctReal);
+  const ultrapassou = limite > 0 && gasto > limite;
+  const row = inputEl.closest('.orc-cat-row');
+  const bar = row.querySelector('.orc-bar');
+  bar.style.width = pct + '%';
+  bar.style.background = corBarraOrcamento(pct);
+  const spans = row.querySelectorAll('.hint span');
+  if(spans[0]){
+    spans[0].textContent = 'Gasto ' + fmt(gasto) + (ultrapassou ? ' (excedeu)' : '');
+    spans[0].classList.toggle('neg', ultrapassou);
+  }
+  if(spans[1]){
+    spans[1].textContent = limite ? pctReal.toFixed(0) + '%' : '';
+    spans[1].classList.toggle('neg', ultrapassou);
+  }
 }
 
 function corBarraOrcamento(pct){
@@ -1893,9 +2062,13 @@ function renderOrcamento(){
 
   document.getElementById('orcamentoMesLabel').textContent = 'Referente a ' + monthKey.split('-').reverse().join('/');
   document.getElementById('orcamentoTotalInput').value = orc.total || '';
-  const pctTotal = orc.total ? Math.min(100, (gastoTotal / orc.total) * 100) : 0;
+  const pctTotalReal = orc.total ? (gastoTotal / orc.total) * 100 : 0;
+  const pctTotal = Math.min(100, pctTotalReal);
+  const restanteTotal = (orc.total || 0) - gastoTotal;
   document.getElementById('orcamentoTotalGasto').textContent = fmt(gastoTotal);
-  document.getElementById('orcamentoTotalRestante').textContent = fmt(Math.max(0, (orc.total || 0) - gastoTotal));
+  const restanteEl = document.getElementById('orcamentoTotalRestante');
+  restanteEl.textContent = restanteTotal >= 0 ? fmt(restanteTotal) : ('Excedido em ' + fmt(Math.abs(restanteTotal)));
+  restanteEl.classList.toggle('neg', restanteTotal < 0);
   const barTotal = document.getElementById('orcamentoTotalBar');
   barTotal.style.width = pctTotal + '%';
   barTotal.style.background = corBarraOrcamento(pctTotal);
@@ -1905,18 +2078,20 @@ function renderOrcamento(){
   list.innerHTML = todasCategorias.map(cat => {
     const limite = orc.categorias[cat] || 0;
     const gasto = gastoPorCat[cat] || 0;
-    const pct = limite ? Math.min(100, (gasto / limite) * 100) : 0;
+    const pctReal = limite ? (gasto / limite) * 100 : 0;
+    const pct = Math.min(100, pctReal);
+    const ultrapassou = limite > 0 && gasto > limite;
     const catEscaped = cat.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     return `
       <div class="orc-cat-row">
         <div class="linha1">
           <span>${cat}</span>
-          <input type="number" step="0.01" min="0" value="${limite || ''}" placeholder="0,00" onchange="salvarOrcamentoCategoria('${catEscaped}', parseFloat(this.value)||0)">
+          <input type="number" step="0.01" min="0" value="${limite || ''}" placeholder="0,00" onchange="salvarOrcamentoCategoria('${catEscaped}', parseFloat(this.value)||0)" oninput="atualizarBarraOrcamentoCategoriaLive(this, '${catEscaped}')">
         </div>
         <div class="orc-bar-wrap"><div class="orc-bar" style="width:${pct}%; background:${corBarraOrcamento(pct)};"></div></div>
         <div class="hint" style="display:flex; justify-content:space-between; margin-top:2px;">
-          <span>Gasto ${fmt(gasto)}</span>
-          <span>${limite ? pct.toFixed(0) + '%' : ''}</span>
+          <span class="${ultrapassou ? 'neg' : ''}">Gasto ${fmt(gasto)}${ultrapassou ? ' (excedeu)' : ''}</span>
+          <span class="${ultrapassou ? 'neg' : ''}">${limite ? pctReal.toFixed(0) + '%' : ''}</span>
         </div>
       </div>
     `;
@@ -2246,6 +2421,7 @@ function renderAll(){
   renderContaPanel();
   renderCartoesPanel();
   renderFluxoCaixa();
+  renderNotificacoes();
   if(document.getElementById('orcamentoModal').style.display === 'block') renderOrcamento();
   if(razaoAtualKey) renderRazaoContent();
 }
@@ -2455,8 +2631,15 @@ function getRazaoConfig(key){
     totalLabel = 'Saldo atual (calculado)';
   } else if(key === 'cartao'){
     itens = data.lancamentos.filter(l => l.tipo==='cartao' || (l.tipo==='despesa' && l.categoria === 'Cartão de Crédito'));
-    titulo = 'Razão — Cartões de Crédito (compras e pagamentos de fatura)';
-    total = cartoesAgrupados().reduce((s,c)=>s+Number(c.total),0);
+    if(razaoFiltroNome){
+      itens = itens.filter(l => l.nome === razaoFiltroNome);
+      const cartaoInfo = cartoesAgrupados().find(c => c.nome === razaoFiltroNome);
+      titulo = 'Razão — Cartão ' + razaoFiltroNome;
+      total = cartaoInfo ? cartaoInfo.total : 0;
+    } else {
+      titulo = 'Razão — Cartões de Crédito (compras e pagamentos de fatura)';
+      total = cartoesAgrupados().reduce((s,c)=>s+Number(c.total),0);
+    }
     totalLabel = 'Faturas em aberto';
   } else if(key === 'divida'){
     itens = data.lancamentos.filter(l=>l.tipo==='divida');
@@ -2484,14 +2667,16 @@ function getRazaoConfig(key){
   return {titulo, itens, total, totalLabel};
 }
 
-function abrirRazao(key){
+function abrirRazao(key, filtroNome){
   razaoAtualKey = key;
+  razaoFiltroNome = filtroNome || null;
   document.getElementById('razaoModal').style.display = 'flex';
   renderRazaoContent();
 }
 function fecharRazao(){
   document.getElementById('razaoModal').style.display = 'none';
   razaoAtualKey = null;
+  razaoFiltroNome = null;
 }
 function renderRazaoContent(){
   if(!razaoAtualKey) return;
@@ -2509,7 +2694,7 @@ function renderRazaoContent(){
   const resumoEl = document.getElementById('razaoResumoCartoes');
   const chartContainer = document.getElementById('razaoChartContainer');
   if(razaoAtualKey === 'cartao'){
-    const cartoes = cartoesAgrupados();
+    const cartoes = razaoFiltroNome ? [] : cartoesAgrupados();
     if(cartoes.length === 0){
       resumoEl.innerHTML = '';
     } else {
@@ -2530,7 +2715,7 @@ function renderRazaoContent(){
 }
 
 function renderChartRazaoCartaoCategorias(){
-  const itens = data.lancamentos.filter(l => l.tipo === 'cartao');
+  const itens = data.lancamentos.filter(l => l.tipo === 'cartao' && (!razaoFiltroNome || l.nome === razaoFiltroNome));
   const porCategoria = {};
   itens.forEach(l => {
     const cat = l.categoria || 'Sem categoria';
@@ -2823,7 +3008,8 @@ function renderCartoesPanel(){
     list.innerHTML = cartoes.map((c, idx) => {
       const metaPartes = [];
       if(c.vencimento) metaPartes.push('Vence ' + fmtDate(c.vencimento));
-      const btnEditar = c.latestId ? `<button class="edit" onclick="editLancamento('${c.latestId}')">Editar</button>` : '';
+      const nomeEscapado = (c.nome || '').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+      const btnEditar = c.latestId ? `<button class="edit" onclick="abrirRazao('cartao', '${nomeEscapado}')">Lançamentos</button>` : '';
       const btnPagar = c.total > 0 ? `<button class="baixa" onclick="pagarFatura(${idx})">Pagar fatura</button>` : '<span class="quitada-tag">Em dia ✓</span>';
       return `
       <div class="list-item">
