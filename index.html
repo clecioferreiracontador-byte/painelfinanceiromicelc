@@ -2720,28 +2720,19 @@ function linhaLancamentoHtml(item){
       ? 'neg'
       : 'info';
   const tooltip = [detalheFor(item), item.descricao].filter(Boolean).join(' — ');
-  // Pé de Meia usa "x" + lápis sempre visíveis (sem menu escondido); os demais tipos usam
-  // o menu "3 pontinhos" (podem ter uma ação extra, como Baixar parcela de dívida).
-  let acoes;
-  if(item.tipo === 'investimento'){
-    acoes = `
-      <button class="cartao-acao" onclick="editLancamento('${item.id}')" title="Editar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
-      <button class="cartao-acao" onclick="deleteLancamento('${item.id}')" title="Excluir">x</button>`;
-  } else {
-    let acoesExtra = '';
-    if(item.tipo === 'divida' && Number(item.parcelas) > 0){
-      acoesExtra = `<button onclick="baixarParcela('${item.id}')">Baixar parcela</button>`;
-    }
-    acoes = `
-      <div class="row-menu-wrap">
-        <button class="row-menu-btn" onclick="toggleRowMenu(this, event)" title="Mais ações">⋮</button>
-        <div class="row-menu">
-          ${acoesExtra}
-          <button onclick="editLancamento('${item.id}')">Editar</button>
-          <button class="row-menu-danger" onclick="deleteLancamento('${item.id}')">Excluir</button>
-        </div>
-      </div>`;
+  let acoesExtra = '';
+  if(item.tipo === 'divida' && Number(item.parcelas) > 0){
+    acoesExtra = `<button onclick="baixarParcela('${item.id}')">Baixar parcela</button>`;
   }
+  const acoes = `
+    <div class="row-menu-wrap">
+      <button class="row-menu-btn" onclick="toggleRowMenu(this, event)" title="Mais ações">⋮</button>
+      <div class="row-menu">
+        ${acoesExtra}
+        <button onclick="editLancamento('${item.id}')">Editar</button>
+        <button class="row-menu-danger" onclick="deleteLancamento('${item.id}')">Excluir</button>
+      </div>
+    </div>`;
   return `
     <tr title="${tooltip.replace(/"/g,'&quot;')}">
       <td>${fmtDate(item.data)}</td>
@@ -3231,8 +3222,13 @@ function renderInvestimentos(){
         </div>
         <div class="actions">
           <span class="pos" style="margin-right:6px;">${fmt(i.valor)}</span>
-          <button class="cartao-acao" onclick="editLancamento('${i.id}')" title="Editar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
-          <button class="cartao-acao" onclick="deleteLancamento('${i.id}')" title="Excluir">x</button>
+          <div class="row-menu-wrap">
+            <button class="row-menu-btn" onclick="toggleRowMenu(this, event)" title="Mais ações">⋮</button>
+            <div class="row-menu">
+              <button onclick="editLancamento('${i.id}')">Editar</button>
+              <button class="row-menu-danger" onclick="deleteLancamento('${i.id}')">Excluir</button>
+            </div>
+          </div>
         </div>
       </div>
     `).join('');
