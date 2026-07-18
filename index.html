@@ -40,13 +40,13 @@
   .login-card .app-logo{width:80px; height:80px; border-radius:20px; margin-bottom:8px;}
   .app-logo-name{display:block; text-align:center; font-weight:700; letter-spacing:.04em; color:var(--text); font-size:1rem; margin-bottom:14px;}
   .home-banner{
-    background-color:#ffffff; border-radius:28px; padding:22px 20px 16px; overflow:hidden;
-    box-shadow:0 6px 20px rgba(0,0,0,0.18);
-    background-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='140'%20height='70'%3E%3Ctext%20x='0'%20y='42'%20font-family='Arial,%20sans-serif'%20font-weight='800'%20font-size='17'%20fill='rgba(21,128,61,0.2)'%20transform='rotate(-16%2070%2035)'%3EBroto%3C/text%3E%3C/svg%3E");
-    background-repeat:repeat;
+    background-color:#ffffff; border-radius:0; padding:22px 20px 16px;
+    box-shadow:0 4px 14px rgba(0,0,0,0.18);
+    margin:-24px -24px 24px -24px;
   }
   .home-banner .app-logo{ position:relative; z-index:1; }
   .home-banner .home-greeting{ position:relative; z-index:1; color:#0f172a; }
+  .home-banner-name{ font-weight:700; letter-spacing:.06em; color:#15803d; font-size:0.85rem; margin:2px 0 8px; }
   .home-banner .sub{ position:relative; z-index:1; color:#64748b; }
   .sub{color:var(--muted); font-size:0.9rem;}
   .cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin-bottom:28px;}
@@ -305,7 +305,7 @@
     .sub{ font-size:0.78rem; }
     .app-logo{ width:70px; height:70px; border-radius:18px; }
     .login-card .app-logo{ width:64px; height:64px; border-radius:16px; }
-    .home-banner{ border-radius:22px; padding:18px 14px 14px; background-size:100px 50px; }
+    .home-banner{ padding:18px 14px 14px; margin:-12px -10px 16px -10px; }
 
     .panel{ padding:12px; }
     .panel h2{ font-size:0.95rem; gap:6px; }
@@ -571,6 +571,7 @@
 <div class="header-block home-banner">
   <img src="icons/icon-192.png" alt="Broto" class="app-logo">
   <div class="home-greeting" id="homeGreeting"></div>
+  <div class="home-banner-name">Broto</div>
   <div class="sub"></div>
 </div>
 
