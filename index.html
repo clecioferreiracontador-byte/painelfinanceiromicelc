@@ -30,7 +30,7 @@
     background:linear-gradient(160deg,#f8fafc,#e2e8f0);
   }
   *{box-sizing:border-box;}
-  html, body{ overscroll-behavior:none; touch-action:pan-y; }
+  html, body{ overscroll-behavior:none; }
   body{
     margin:0; font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;
     background:linear-gradient(160deg,#0f172a,#111827); color:var(--text); padding:24px;
@@ -562,10 +562,14 @@
       <button class="secondary small" onclick="irHome()">Voltar</button>
     </div>
     <div class="month-filter">
-      <label style="color:var(--muted); font-size:0.85rem;">Mês de referência (filtra a lista abaixo):</label>
-      <input type="month" id="provisaoMesInput" onchange="renderProvisoes()">
-      <label style="color:var(--muted); font-size:0.85rem; margin-left:8px;">Vencimento:</label>
-      <input type="date" id="provisaoVencimento" class="mini-cal-input" form="provisaoForm" required>
+      <span style="display:flex; align-items:center; gap:8px;">
+        <label style="color:var(--muted); font-size:0.85rem; white-space:nowrap;">Mês de referência:</label>
+        <input type="month" id="provisaoMesInput" onchange="renderProvisoes()">
+      </span>
+      <span style="display:flex; align-items:center; gap:6px;">
+        <label style="color:var(--muted); font-size:0.85rem; white-space:nowrap;">Venc.:</label>
+        <input type="date" id="provisaoVencimento" class="mini-cal-input" form="provisaoForm" required>
+      </span>
     </div>
     <form class="inline" id="provisaoForm">
       <div class="field">
