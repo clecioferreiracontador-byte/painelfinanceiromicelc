@@ -351,7 +351,8 @@
   .score-gauge-value{ position:absolute; left:0; right:0; bottom:6px; text-align:center; }
   .score-gauge-value #scoreValorGrande{ font-size:2.2rem; font-weight:800; line-height:1; }
   .score-rotulo{ text-align:center; font-weight:700; margin-top:4px; }
-  .score-dica{ display:flex; gap:8px; background:var(--card2); border-radius:10px; padding:10px 12px; margin-top:14px; font-size:0.82rem; }
+  #scoreMensagem{ min-height:2.4em; }
+  .score-dica{ display:flex; align-items:center; gap:8px; background:var(--card2); border-radius:10px; padding:10px 12px; margin-top:14px; font-size:0.82rem; min-height:60px; box-sizing:border-box; }
   .score-stats{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:16px; }
   .score-stats > div{ background:var(--card2); border-radius:10px; padding:10px; text-align:center; }
   .score-stats .hint{ margin-bottom:2px; }
@@ -985,8 +986,8 @@
       </div>
     </div>
     <div id="scoreRotulo" class="score-rotulo">Saúde financeira razoável</div>
-    <div id="scoreMensagem" class="hint" style="text-align:center; margin-top:4px;"></div>
-    <div class="score-dica" id="scoreDicaBox" style="display:none;">
+    <div id="scoreMensagem" class="hint" style="text-align:center; margin-top:4px; visibility:hidden;"></div>
+    <div class="score-dica" id="scoreDicaBox" style="visibility:hidden;">
       <span>✦</span> <span id="scoreDicaTexto"></span>
     </div>
     <div class="score-stats">
@@ -2348,23 +2349,27 @@ function renderScoreFinanceiroDetalhe(){
   rotuloEl.textContent = rotuloScore(r.score);
   rotuloEl.style.color = cor;
 
+  // Usa visibility (em vez de display) para o texto/dica sempre reservarem o mesmo espaço —
+  // assim o modal não muda de altura (e não "pula") ao trocar entre Hoje/Mês/3 meses.
   const mensagemEl = document.getElementById('scoreMensagem');
   const dicaBox = document.getElementById('scoreDicaBox');
   if(r.semMovimentacao){
     mensagemEl.textContent = 'Nenhuma movimentação financeira foi detectada no período atual.';
+    mensagemEl.style.visibility = 'visible';
     document.getElementById('scoreDicaTexto').textContent = 'Reveja suas despesas assim que possuam alguma movimentação.';
-    dicaBox.style.display = 'flex';
+    dicaBox.style.visibility = 'visible';
   } else if(r.resultado < 0){
-    mensagemEl.textContent = '';
+    mensagemEl.style.visibility = 'hidden';
     document.getElementById('scoreDicaTexto').textContent = 'Suas saídas superaram as entradas no período — reveja despesas para equilibrar o resultado.';
-    dicaBox.style.display = 'flex';
+    dicaBox.style.visibility = 'visible';
   } else if(sumByTipo('divida') > 0){
-    mensagemEl.textContent = '';
+    mensagemEl.style.visibility = 'hidden';
     document.getElementById('scoreDicaTexto').textContent = 'Você tem dívidas em aberto — quitá-las ajuda a melhorar sua saúde financeira.';
-    dicaBox.style.display = 'flex';
+    dicaBox.style.visibility = 'visible';
   } else {
-    mensagemEl.textContent = '';
-    dicaBox.style.display = 'none';
+    mensagemEl.style.visibility = 'hidden';
+    document.getElementById('scoreDicaTexto').textContent = 'Continue assim para manter sua saúde financeira em dia.';
+    dicaBox.style.visibility = 'hidden';
   }
 
   document.getElementById('scoreEntradas').textContent = fmt(r.entradas);
