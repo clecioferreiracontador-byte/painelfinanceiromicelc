@@ -1028,11 +1028,23 @@ const OLD_LOCAL_KEY = 'painel_financeiro_data_v2';
 // Desloga automaticamente após 40 minutos sem nenhuma interação, por segurança.
 const INATIVIDADE_LIMITE_MS = 40 * 60 * 1000;
 let inatividadeTimer = null;
+// Esconde foto/sino/menu na hora, sem esperar o auth.signOut() (assíncrono) ir e voltar do
+// Firebase — showLogin() (chamado depois, via onAuthStateChanged) faz isso de novo, mas
+// chamar aqui garante que não fica nem um instante visível na tela de login.
+function ocultarIconesTopo(){
+  closeAccountMenu();
+  closeNotifPanel();
+  document.getElementById('accountMenuWrap').style.display = 'none';
+  document.getElementById('perfilWrap').style.display = 'none';
+  document.getElementById('notifWrap').style.display = 'none';
+}
+
 function resetInatividadeTimer(){
   if(inatividadeTimer) clearTimeout(inatividadeTimer);
   if(!auth.currentUser) return;
   inatividadeTimer = setTimeout(function(){
     logoutPorInatividade = true;
+    ocultarIconesTopo();
     auth.signOut();
   }, INATIVIDADE_LIMITE_MS);
 }
@@ -1274,8 +1286,11 @@ function mostrarView(viewId){
   });
   const activeBtnId = BTN_ID_FOR_VIEW[viewId];
   if(activeBtnId) document.getElementById(activeBtnId).classList.add('active');
-  // Foto de perfil, sino de notificações e menu de 3 pontos só aparecem na Home.
-  const naHome = viewId === 'homeView';
+  // Foto de perfil, sino de notificações e menu de 3 pontos só aparecem na Home — e nunca
+  // se a pessoa não estiver realmente logada (tela de login/carregamento visível), mesmo que
+  // esta função seja chamada por algum outro motivo nesse meio-tempo.
+  const logado = document.getElementById('appScreen').style.display === 'block';
+  const naHome = viewId === 'homeView' && logado;
   const displayNaHome = naHome ? '' : 'none';
   const perfilEl = document.getElementById('perfilWrap');
   const notifEl = document.getElementById('notifWrap');
@@ -1619,14 +1634,7 @@ document.getElementById('signupBtn').addEventListener('click', function(){
 });
 document.getElementById('logoutBtn').addEventListener('click', function(){
   logoutManual = true;
-  // Esconde a foto/sino/menu na hora, sem esperar o auth.signOut() (assíncrono) ir e voltar
-  // do Firebase — showLogin() (chamado depois, via onAuthStateChanged) já faz isso de novo,
-  // mas aqui garante que não fica nem um instante visível.
-  closeAccountMenu();
-  closeNotifPanel();
-  document.getElementById('accountMenuWrap').style.display = 'none';
-  document.getElementById('perfilWrap').style.display = 'none';
-  document.getElementById('notifWrap').style.display = 'none';
+  ocultarIconesTopo();
   auth.signOut();
 });
 
