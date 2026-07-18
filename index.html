@@ -832,7 +832,7 @@
   <div id="historicoWrap" style="display:none;">
     <div class="tbl-wrap">
       <table>
-        <thead><tr><th>Data</th><th>Tipo</th><th>Detalhe</th><th>Descrição</th><th>Valor</th><th></th></tr></thead>
+        <thead><tr><th>Data</th><th>Tipo</th><th>Valor</th><th></th></tr></thead>
         <tbody id="txTableBody"></tbody>
       </table>
     </div>
@@ -918,7 +918,7 @@
     </div>
     <div class="tbl-wrap">
       <table>
-        <thead><tr><th>Data</th><th>Tipo</th><th>Detalhe</th><th>Descrição</th><th>Valor</th><th></th></tr></thead>
+        <thead><tr><th>Data</th><th>Tipo</th><th>Valor</th><th></th></tr></thead>
         <tbody id="razaoBody"></tbody>
       </table>
     </div>
@@ -2354,21 +2354,20 @@ function renderProvisoes(){
   list.innerHTML = ordenados.map(p => {
     const tag = p.tipo === 'receita' ? {label:'Receita', cls:'receita'} : {label:'Despesa', cls:'despesa'};
     const cor = p.tipo === 'receita' ? 'pos' : 'neg';
-    const recorrenteTag = p.recorrenciaId ? '<span class="recorrente-tag">🔁 Recorrente</span>' : '';
     const btnExcluirSerie = p.recorrenciaId ? `<button class="row-menu-danger" onclick="excluirSerieProvisao('${p.recorrenciaId}')">Excluir série</button>` : '';
-    const vencimentoTxt = p.vencimento ? (' • Vence ' + fmtDate(p.vencimento)) : '';
+    const tooltip = [p.categoria, p.descricao, p.recorrenciaId ? 'Recorrente' : null].filter(Boolean).join(' — ').replace(/"/g,'&quot;');
     return `
-      <div class="list-item">
+      <div class="list-item" title="${tooltip}">
         <div>
-          <div><span class="tag ${tag.cls}">${tag.label}</span> ${p.categoria} ${recorrenteTag}</div>
-          <div class="meta">${p.descricao || '-'}${vencimentoTxt}</div>
+          <div>${fmtDate(p.vencimento)}</div>
+          <span class="tag ${tag.cls}">${tag.label}</span>
         </div>
         <div class="actions">
           <span class="${cor}" style="margin-right:6px;">${fmt(p.valor)}</span>
-          <button class="row-icon-btn" onclick="abrirGoogleAgendaProvisao('${p.id}')" title="Lembrete no Google Agenda, 1 dia antes do vencimento">📅</button>
           <div class="row-menu-wrap">
             <button class="row-menu-btn" onclick="toggleRowMenu(this, event)" title="Mais ações">⋮</button>
             <div class="row-menu">
+              <button onclick="abrirGoogleAgendaProvisao('${p.id}')">📅 Lembrete no Google Agenda</button>
               <button onclick="lancarProvisaoAgora('${p.id}')">Lançar agora</button>
               <button class="row-menu-danger" onclick="excluirProvisao('${p.id}')">Excluir</button>
               ${btnExcluirSerie}
@@ -2661,12 +2660,11 @@ function linhaLancamentoHtml(item){
   if(item.tipo === 'divida' && Number(item.parcelas) > 0){
     acoesExtra = `<button onclick="baixarParcela('${item.id}')">Baixar parcela</button>`;
   }
+  const tooltip = [detalheFor(item), item.descricao].filter(Boolean).join(' — ');
   return `
-    <tr>
+    <tr title="${tooltip.replace(/"/g,'&quot;')}">
       <td>${fmtDate(item.data)}</td>
       <td><span class="tag ${tag.cls}">${tag.label}</span></td>
-      <td>${detalheFor(item)}</td>
-      <td>${item.descricao || '-'}</td>
       <td class="${corValor}">${fmt(item.valor)}</td>
       <td class="actions-cell">
         <div class="row-menu-wrap">
@@ -2858,7 +2856,7 @@ function renderRazaoContent(){
   document.getElementById('razaoTitle').textContent = cfg.titulo;
   const body = document.getElementById('razaoBody');
   if(cfg.itens.length === 0){
-    body.innerHTML = '<tr><td colspan="6" class="empty">Nenhum lançamento encontrado.</td></tr>';
+    body.innerHTML = '<tr><td colspan="4" class="empty">Nenhum lançamento encontrado.</td></tr>';
   } else {
     body.innerHTML = cfg.itens.map(linhaLancamentoHtml).join('');
   }
