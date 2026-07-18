@@ -10,6 +10,7 @@
 <link rel="apple-touch-icon" href="icons/icon-180.png?v=5">
 <meta name="apple-mobile-web-app-title" content="Broto">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0f172a">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -41,7 +42,7 @@
   .login-card .app-logo{width:80px; height:80px; border-radius:20px; margin-bottom:8px;}
   .app-logo-name{display:block; text-align:center; font-weight:700; letter-spacing:.04em; color:var(--text); font-size:1rem; margin-bottom:14px;}
   .home-banner{
-    background-color:var(--border); border-radius:0; padding:22px 20px 16px;
+    background-color:var(--border); border-radius:0; padding:calc(22px + env(safe-area-inset-top)) 20px 16px;
     box-shadow:0 4px 14px rgba(0,0,0,0.18);
     margin:-24px -24px 24px -24px;
   }
@@ -185,11 +186,11 @@
      substituem o conteúdo da Home em vez de flutuar por cima dela. Home volta pelo botão "Home". */
   /* padding-top evita que o cabeçalho da página (título + botão Voltar) fique atrás do
      botão de conta fixo no canto superior direito */
-  .page-view{display:none; padding-top:66px;}
-  .page-view .view-card{max-width:820px; margin:0 auto 24px;}
+  .page-view{display:none; padding-top:calc(66px + env(safe-area-inset-top));}
+  .page-view .view-card{max-width:820px; margin:0 auto 24px; max-height:none; overflow-y:visible;}
 
   /* Barra de navegação inferior fixa (só aparece logado), estilo apps de banco */
-  body.has-bottom-nav{ padding-bottom:84px; }
+  body.has-bottom-nav{ padding-bottom:calc(84px + env(safe-area-inset-bottom)); }
   .bottom-nav{
     position:fixed; left:0; right:0; bottom:0; z-index:950;
     display:none; justify-content:space-around; align-items:stretch;
@@ -218,7 +219,7 @@
   .bottom-nav-btn.destaque .bn-label{ font-weight:700; }
 
   /* Foto de perfil, no canto superior esquerdo (espelha o menu de conta à direita) */
-  .perfil-wrap{ position:absolute; top:16px; left:16px; z-index:960; }
+  .perfil-wrap{ position:absolute; top:calc(16px + env(safe-area-inset-top)); left:16px; z-index:960; }
   .avatar-btn{
     background:var(--card2); color:var(--muted); border:2px solid rgba(255,255,255,0.4); border-radius:50%;
     width:50px; height:50px; flex-shrink:0; display:flex; align-items:center; justify-content:center;
@@ -229,7 +230,7 @@
   .avatar-btn img{ width:100%; height:100%; object-fit:cover; border-radius:50%; }
 
   /* Menu de conta flutuante (perfil / valores / sair) */
-  .account-menu-wrap{ position:absolute; top:16px; right:16px; z-index:960; }
+  .account-menu-wrap{ position:absolute; top:calc(16px + env(safe-area-inset-top)); right:16px; z-index:960; }
   .menu-btn{
     background:var(--card); color:var(--text); border:1px solid var(--border); border-radius:50%;
     width:50px; height:50px; display:flex; align-items:center; justify-content:center;
@@ -253,7 +254,7 @@
   .account-menu-item .ami-icon svg{ width:18px; height:18px; }
 
   /* Sino de notificações, à esquerda do menu de conta */
-  .notif-wrap{ position:absolute; top:16px; right:74px; z-index:960; }
+  .notif-wrap{ position:absolute; top:calc(16px + env(safe-area-inset-top)); right:74px; z-index:960; }
   .notif-badge{
     position:absolute; top:-2px; right:-2px; min-width:18px; height:18px; padding:0 4px;
     background:var(--red); color:#fff; border-radius:50%; font-size:0.65rem; font-weight:700;
@@ -383,7 +384,7 @@
     .sub{ font-size:0.78rem; }
     .app-logo{ width:70px; height:70px; border-radius:18px; }
     .login-card .app-logo{ width:64px; height:64px; border-radius:16px; }
-    .home-banner{ padding:18px 14px 14px; margin:-12px -10px 16px -10px; }
+    .home-banner{ padding:calc(18px + env(safe-area-inset-top)) 14px 14px; margin:-12px -10px 16px -10px; }
 
     .panel{ padding:12px; }
     .panel h2{ font-size:0.95rem; gap:6px; }
@@ -445,17 +446,17 @@
     .modal-header h3{ font-size:0.92rem; }
     .mini-cal-input{ width:104px; font-size:0.72rem; padding:4px 6px; }
 
-    body.has-bottom-nav{ padding-bottom:76px; }
+    body.has-bottom-nav{ padding-bottom:calc(76px + env(safe-area-inset-bottom)); }
     .bottom-nav-btn .bn-icon svg{ width:20px; height:20px; }
     .bottom-nav-btn .bn-label{ font-size:0.6rem; }
     .bottom-nav-btn.destaque .bn-icon{ width:46px; height:46px; margin-top:-14px; }
     .bottom-nav-btn.destaque .bn-icon svg{ width:22px; height:22px; }
-    .account-menu-wrap{ top:10px; right:10px; }
+    .account-menu-wrap{ top:calc(10px + env(safe-area-inset-top)); right:10px; }
     .menu-btn{ width:46px; height:46px; }
     .menu-btn svg{ width:22px; height:22px; }
-    .notif-wrap{ top:10px; right:64px; }
+    .notif-wrap{ top:calc(10px + env(safe-area-inset-top)); right:64px; }
     .notif-panel{ min-width:240px; max-width:82vw; }
-    .perfil-wrap{ top:10px; left:10px; }
+    .perfil-wrap{ top:calc(10px + env(safe-area-inset-top)); left:10px; }
     .avatar-btn{ width:46px; height:46px; }
     .avatar-btn svg{ width:21px; height:21px; }
   }
