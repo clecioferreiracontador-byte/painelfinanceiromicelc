@@ -301,7 +301,10 @@
     button.iconbtn{ padding:0 8px; min-width:30px; }
 
     form.inline{ gap:8px; }
-    .field{ min-width:0; flex:1 1 46%; }
+    /* Um campo por linha no celular — evita qualquer desalinhamento entre campos lado a lado
+       (inputs nativos como o de data podem renderizar com alturas diferentes de aparelho pra
+       aparelho, então colocar dois na mesma linha é frágil). */
+    .field{ min-width:0; flex:1 1 100%; }
     .field input, .field select{ width:100%; }
     input, select{ font-size:0.82rem; padding:7px 8px; min-width:0; height:38px; }
 
@@ -660,7 +663,6 @@
         <option value="despesa">Despesa</option>
         <option value="cartao">Cartão de Crédito</option>
         <option value="divida">Dívida</option>
-        <option value="conta" style="display:none;">Conta Corrente</option>
         <option value="investimento">Pé de Meia</option>
       </select>
     </div>
@@ -1660,6 +1662,25 @@ function despesaEhPagamentoCartao(){
     document.getElementById('lancCategoria').value === 'Cartão de Crédito';
 }
 
+// "Conta Corrente" não é uma opção que a pessoa escolhe manualmente no Tipo (receita/despesa já
+// alimentam o saldo sozinhos) — ela só existe temporariamente no <select> quando o fluxo de
+// "Ajustar saldo base" ou a edição de um lançamento antigo desse tipo precisam dela. Removida do
+// DOM por padrão em vez de só escondida por CSS, porque o seletor nativo do celular (iOS/Android)
+// não respeita display:none em <option> de forma confiável.
+function garantirOpcaoContaTipo(){
+  const select = document.getElementById('lancTipo');
+  if(!select.querySelector('option[value="conta"]')){
+    const opt = document.createElement('option');
+    opt.value = 'conta';
+    opt.textContent = 'Conta Corrente';
+    select.appendChild(opt);
+  }
+}
+function removerOpcaoContaTipo(){
+  const opt = document.getElementById('lancTipo').querySelector('option[value="conta"]');
+  if(opt) opt.remove();
+}
+
 function updateFormFieldsVisibility(tipo){
   const mostrarCartaoNome = tipo === 'cartao' || despesaEhPagamentoCartao();
   const map = {
@@ -2342,6 +2363,7 @@ function editLancamento(id){
   if(!item) return;
   editingId = id;
   document.getElementById('lancData').value = item.data;
+  if(item.tipo === 'conta') garantirOpcaoContaTipo();
   document.getElementById('lancTipo').value = item.tipo;
   if(item.tipo === 'receita' || item.tipo === 'despesa' || item.tipo === 'cartao'){
     document.getElementById('lancCategoria').value = item.categoria || '';
@@ -2366,6 +2388,7 @@ function cancelEdit(){
   document.getElementById('lancForm').reset();
   document.getElementById('lancData').value = new Date().toISOString().slice(0,10);
   document.getElementById('lancTipo').value = 'receita';
+  removerOpcaoContaTipo();
   updateFormFieldsVisibility('receita');
   document.getElementById('lancSubmitBtn').textContent = 'Adicionar';
   document.getElementById('lancCancelBtn').style.display = 'none';
@@ -2374,6 +2397,7 @@ function cancelEdit(){
 function novoLancamento(tipo){
   fecharRazao();
   cancelEdit();
+  if(tipo === 'conta') garantirOpcaoContaTipo();
   document.getElementById('lancTipo').value = tipo;
   updateFormFieldsVisibility(tipo);
   abrirLancamentos();
