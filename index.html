@@ -87,6 +87,12 @@
   button.edit{background:#1e3a5f; color:#93c5fd; padding:5px 10px; font-size:0.78rem;}
   button.baixa{background:#14532d; color:#86efac; padding:5px 10px; font-size:0.78rem;}
   button:hover{opacity:0.9;}
+  /* Ações do cartão de crédito na Home: mesma paleta azul do valor da fatura, como símbolos compactos */
+  button.cartao-acao{
+    background:#1e3a5f; color:#93c5fd; width:34px; height:30px; padding:0;
+    font-size:1rem; font-weight:700; display:inline-flex; align-items:center; justify-content:center;
+  }
+  button.cartao-acao svg{ width:16px; height:16px; }
   .hint{font-size:0.72rem; color:var(--muted);}
   .quitada-tag{background:rgba(34,197,94,0.15); color:var(--green); padding:2px 8px; border-radius:20px; font-size:0.72rem; font-weight:600;}
   .recorrente-tag{background:rgba(59,130,246,0.15); color:var(--blue); padding:2px 8px; border-radius:20px; font-size:0.7rem; font-weight:600;}
@@ -3067,8 +3073,8 @@ function renderCartoesPanel(){
       const metaPartes = [];
       if(c.vencimento) metaPartes.push('Vence ' + fmtDate(c.vencimento));
       const nomeEscapado = (c.nome || '').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-      const btnEditar = c.latestId ? `<button class="edit" onclick="abrirRazao('cartao', '${nomeEscapado}')">Lançamentos</button>` : '';
-      const btnPagar = c.total > 0 ? `<button class="baixa" onclick="pagarFatura(${idx})">Pagar fatura</button>` : '<span class="quitada-tag">Em dia ✓</span>';
+      const btnEditar = c.latestId ? `<button class="cartao-acao" onclick="abrirRazao('cartao', '${nomeEscapado}')" title="Ver lançamentos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg></button>` : '';
+      const btnPagar = c.total > 0 ? `<button class="cartao-acao" onclick="pagarFatura(${idx})" title="Pagar fatura">$</button>` : '<span class="quitada-tag">Em dia ✓</span>';
       return `
       <div class="list-item">
         <div>
@@ -3076,7 +3082,7 @@ function renderCartoesPanel(){
           <div class="meta">${metaPartes.join(' • ')}</div>
         </div>
         <div class="actions">
-          <span class="warn" style="margin-right:6px;">${fmt(c.total)}</span>
+          <span class="info" style="margin-right:6px;">${fmt(c.total)}</span>
           ${btnPagar}
           ${btnEditar}
         </div>
