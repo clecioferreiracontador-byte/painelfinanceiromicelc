@@ -160,8 +160,9 @@
   input[type="month"].cal-icon-input::-webkit-calendar-picker-indicator{ opacity:0; }
   .cal-icon-symbol{
     position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-    font-size:0.85rem; line-height:1; pointer-events:none;
+    line-height:1; pointer-events:none; color:var(--muted);
   }
+  .cal-icon-symbol svg{ width:16px; height:16px; display:block; }
   .cal-icon-wrap.active::after{
     content:''; position:absolute; top:0; right:0; width:6px; height:6px;
     border-radius:50%; background:var(--blue); pointer-events:none;
@@ -740,7 +741,7 @@
       Faturas em aberto
       <span class="cal-icon-wrap">
         <input type="month" id="filtroMesCartoes" onchange="renderCartoesPanel()" class="cal-icon-input" title="Ver faturas até um mês de referência">
-        <span class="cal-icon-symbol">📅</span>
+        <span class="cal-icon-symbol"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17"/><path d="M8 3v4M16 3v4"/></svg></span>
       </span>
     </span>
     <span id="cartoesTotal" class="blur-target">R$ 0,00</span>
@@ -2286,13 +2287,20 @@ function cartoesAgrupados(mesFiltro){
     const saldoAberto = totalComprado - totalPago;
     const maisRecenteCompra = comprasDoNome.length ? comprasDoNome.reduce((a,b)=>(b.data>=a.data?b:a)) : null;
     const maisRecentePagamento = pagamentosDoNome.length ? pagamentosDoNome.reduce((a,b)=>(b.data>=a.data?b:a)) : null;
+    // Vencimento não é obrigatório em cada lançamento — se a compra mais recente não tiver
+    // um preenchido, cai pra compra mais recente do mesmo cartão que tenha, em vez de mostrar
+    // "sem vencimento" mesmo quando o cartão já teve um informado antes.
+    const comprasComVencimento = comprasDoNome.filter(l => l.vencimento);
+    const maisRecenteComVencimento = comprasComVencimento.length
+      ? comprasComVencimento.reduce((a,b)=>(b.data>=a.data?b:a))
+      : null;
     return {
       nome,
       total: saldoAberto,
       totalComprado,
       totalPago,
       limite: maisRecenteCompra ? maisRecenteCompra.limite : null,
-      vencimento: maisRecenteCompra ? maisRecenteCompra.vencimento : null,
+      vencimento: maisRecenteComVencimento ? maisRecenteComVencimento.vencimento : null,
       dataUltimoLancamento: maisRecenteCompra ? maisRecenteCompra.data : (maisRecentePagamento ? maisRecentePagamento.data : null),
       latestId: maisRecenteCompra ? maisRecenteCompra.id : null,
       qtdLancamentos: comprasDoNome.length
