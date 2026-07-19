@@ -34,9 +34,10 @@
   /* Fundo escuro também no <html> (não só no <body>) — sem isso, o efeito de "esticar" do
      iOS ao rolar além do topo/fim da página revela um branco por trás, mesmo com
      overscroll-behavior:none (que nem todo Safari respeita 100%). */
-  /* Mesmo cinza do fundo do banner "Broto" na Home (var(--border)) — é o que a barra de
-     status translúcida do iOS acaba revelando no topo. */
-  html{ background:#334155; }
+  /* Padrão = fundo normal (escuro); só vira o cinza do banner "Broto" quando a Home está
+     visível de fato (ver sincronizarFundoHtml()) — login, carregamento e demais telas usam
+     este fundo normal. */
+  html{ background:#0f172a; }
   html, body{ overscroll-behavior:none; }
   body{
     margin:0; font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;
@@ -1019,7 +1020,7 @@
 // Aplica o tema salvo o quanto antes, pra evitar o "flash" do tema errado ao carregar a página.
 if(localStorage.getItem('micelc_tema') === 'claro'){
   document.body.classList.add('tema-claro');
-  document.documentElement.style.background = '#e2e8f0';
+  document.documentElement.style.background = '#f1f5f9';
 }
 
 // ---------- Firebase ----------
@@ -1084,6 +1085,7 @@ function traduzErroFirebase(code){
 }
 
 function showLoading(){
+  sincronizarFundoHtml(false);
   document.getElementById('loadingScreen').style.display = 'flex';
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('appScreen').style.display = 'none';
@@ -1094,6 +1096,7 @@ function showLoading(){
   document.body.classList.remove('has-bottom-nav');
 }
 function showLogin(){
+  sincronizarFundoHtml(false);
   document.getElementById('loadingScreen').style.display = 'none';
   document.getElementById('loginScreen').style.display = 'flex';
   document.getElementById('appScreen').style.display = 'none';
@@ -1299,9 +1302,12 @@ function atualizarLabelTema(){
   document.getElementById('temaMenuLabel').textContent = claro ? 'Modo escuro' : 'Modo claro';
 }
 function toggleTema(){
-  const claro = document.body.classList.toggle('tema-claro');
-  document.documentElement.style.background = claro ? '#e2e8f0' : '#334155';
+  document.body.classList.toggle('tema-claro');
+  const claro = document.body.classList.contains('tema-claro');
   localStorage.setItem('micelc_tema', claro ? 'claro' : 'escuro');
+  const naHomeAtual = document.getElementById('appScreen').style.display === 'block'
+    && document.getElementById('homeView').style.display === 'block';
+  sincronizarFundoHtml(naHomeAtual);
   atualizarLabelTema();
   if(document.getElementById('appScreen').style.display !== 'none') renderAll();
 }
@@ -1317,6 +1323,16 @@ const BTN_ID_FOR_VIEW = {
   provisoesModal: 'provisoesIconBtn',
   extratosModal: 'extratosIconBtn'
 };
+// Fundo do <html> (o que a barra de status translúcida do iOS acaba revelando): cinza do
+// banner "Broto" só quando a Home está mesmo visível; nas demais telas (login, Lançamentos,
+// Orçamento etc.) usa o fundo normal, mais escuro.
+function sincronizarFundoHtml(naHome){
+  const claro = document.body.classList.contains('tema-claro');
+  document.documentElement.style.background = naHome
+    ? (claro ? '#e2e8f0' : '#334155')
+    : (claro ? '#f1f5f9' : '#0f172a');
+}
+
 function mostrarView(viewId){
   if(typeof fecharPainelModal === 'function') fecharPainelModal();
   VIEW_IDS.forEach(id => {
@@ -1341,6 +1357,7 @@ function mostrarView(viewId){
   if(perfilEl) perfilEl.style.display = displayNaHome;
   if(notifEl) notifEl.style.display = displayNaHome;
   if(menuEl) menuEl.style.display = displayNaHome;
+  sincronizarFundoHtml(naHome);
   window.scrollTo({top:0, behavior:'smooth'});
 }
 
