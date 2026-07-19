@@ -151,12 +151,17 @@
      Precisa ser um input de verdade — não escondido/1px — para o seletor nativo abrir
      de forma confiável no celular (showPicker()/focus() em input invisível falha
      silenciosamente em vários navegadores mobile). */
+  .cal-icon-wrap{ position:relative; display:inline-flex; align-items:center; justify-content:center; }
   input[type="month"].cal-icon-input{
-    width:30px; height:26px; padding:0; border:1px solid var(--border); border-radius:6px;
-    background:transparent; color:transparent; font-size:0; min-width:0; max-width:30px;
-    -webkit-min-logical-width:30px; cursor:pointer;
+    width:26px; height:26px; padding:0; border:1px solid var(--border); border-radius:6px;
+    background:transparent; color:transparent; font-size:0; min-width:0; max-width:26px;
+    -webkit-min-logical-width:26px; cursor:pointer;
   }
-  input[type="month"].cal-icon-input::-webkit-calendar-picker-indicator{ opacity:1; margin:0; padding:0; cursor:pointer; }
+  input[type="month"].cal-icon-input::-webkit-calendar-picker-indicator{ opacity:0; }
+  .cal-icon-symbol{
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    font-size:0.85rem; line-height:1; pointer-events:none;
+  }
   .row-menu-wrap{ position:relative; display:inline-flex; }
   .row-menu-btn{
     background:none; border:none; color:var(--muted); font-size:1.15rem; font-weight:700;
@@ -716,7 +721,10 @@
   <div class="totals-line" style="flex-wrap:nowrap;">
     <span style="display:flex; align-items:center; gap:4px; white-space:nowrap;">
       Faturas em aberto
-      <input type="month" id="filtroMesCartoes" onchange="renderCartoesPanel()" class="cal-icon-input" title="Ver faturas até um mês de referência">
+      <span class="cal-icon-wrap">
+        <input type="month" id="filtroMesCartoes" onchange="renderCartoesPanel()" class="cal-icon-input" title="Ver faturas até um mês de referência">
+        <span class="cal-icon-symbol">📅</span>
+      </span>
     </span>
     <span id="cartoesTotal" class="blur-target">R$ 0,00</span>
   </div>
