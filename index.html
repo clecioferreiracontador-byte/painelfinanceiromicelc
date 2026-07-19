@@ -134,7 +134,11 @@
   .totals-line{display:flex; justify-content:space-between; padding-top:10px; margin-top:6px; border-top:1px dashed var(--border); font-weight:700; font-size:0.92rem;}
   .month-filter{display:flex; align-items:center; gap:8px; margin-bottom:14px; flex-wrap:wrap;}
   footer{color:var(--muted); font-size:0.75rem; text-align:center; margin-top:20px;}
-  .actions-cell{display:flex; gap:6px; justify-content:flex-end;}
+  /* Sem display:flex aqui — isso tirava o <td> do modelo de layout de tabela, quebrando o
+     vertical-align:middle (herdado da regra geral de td) e desalinhando o botão "⋮" quando
+     outra célula da mesma linha ficava mais alta (ex: Tipo com a categoria embaixo). O
+     .row-menu-wrap já é inline-flex por conta própria; text-align só o alinha à direita. */
+  .actions-cell{ text-align:right; }
 
   /* Menu "3 pontinhos" reutilizável nas linhas de histórico (Lançamentos, Razão, Provisões) —
      esconde as ações atrás de um clique em vez de mostrar tudo o tempo todo. */
