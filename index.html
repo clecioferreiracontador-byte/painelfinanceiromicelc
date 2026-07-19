@@ -703,7 +703,13 @@
   </h2>
   <div class="panel-body">
   <div id="cartoesList"></div>
-  <div class="totals-line"><span>Faturas em aberto</span><span id="cartoesTotal" class="blur-target">R$ 0,00</span></div>
+  <div class="totals-line">
+    <span style="display:flex; align-items:center; gap:6px;">
+      Faturas em aberto
+      <input type="month" id="filtroMesCartoes" class="mini-cal-input" onchange="renderCartoesPanel()" title="Ver faturas em aberto ou já vencidas até este mês">
+    </span>
+    <span id="cartoesTotal" class="blur-target">R$ 0,00</span>
+  </div>
   </div>
 </div>
 
@@ -2224,9 +2230,16 @@ function calcularSaldoContaCorrente(){
 // Cartões: agrupa lançamentos tipo cartao por nome (compras) e cruza com despesas
 // lançadas na categoria "Cartão de Crédito" com o mesmo nome (pagamentos de fatura).
 // O "total" retornado é o saldo em aberto = total comprado - total pago naquele cartão.
-function cartoesAgrupados(){
-  const compras = data.lancamentos.filter(l => l.tipo === 'cartao');
-  const pagamentos = data.lancamentos.filter(l => l.tipo === 'despesa' && l.categoria === 'Cartão de Crédito' && l.nome);
+// mesFiltro (opcional, "AAAA-MM"): quando informado, só conta compras com vencimento até esse
+// mês (parcelas futuras ficam de fora) e pagamentos feitos até esse mês — dá pra ver a fatura
+// em aberto "como estava" num mês de referência, em vez de sempre o total corrente.
+function cartoesAgrupados(mesFiltro){
+  let compras = data.lancamentos.filter(l => l.tipo === 'cartao');
+  let pagamentos = data.lancamentos.filter(l => l.tipo === 'despesa' && l.categoria === 'Cartão de Crédito' && l.nome);
+  if(mesFiltro){
+    compras = compras.filter(l => (l.vencimento || l.data).slice(0,7) <= mesFiltro);
+    pagamentos = pagamentos.filter(l => l.data.slice(0,7) <= mesFiltro);
+  }
   const nomes = [...new Set(compras.map(l => l.nome || 'Cartão').concat(pagamentos.map(l => l.nome)))];
   return nomes.map(nome => {
     const comprasDoNome = compras.filter(l => (l.nome || 'Cartão') === nome);
@@ -2262,7 +2275,8 @@ function populateCartoesDatalist(){
 // Recebe o índice do cartão dentro de cartoesAgrupados() para evitar problemas de
 // escaping quando o nome do cartão tem acentos, aspas etc.
 function pagarFatura(idx){
-  const cartoes = cartoesAgrupados();
+  const mesFiltro = document.getElementById('filtroMesCartoes').value;
+  const cartoes = cartoesAgrupados(mesFiltro);
   const cartao = cartoes[idx];
   if(!cartao) return;
   if(cartao.total <= 0){
@@ -3650,8 +3664,9 @@ function renderContaPanel(){
 }
 
 function renderCartoesPanel(){
+  const mesFiltro = document.getElementById('filtroMesCartoes').value;
   const list = document.getElementById('cartoesList');
-  const cartoes = cartoesAgrupados();
+  const cartoes = cartoesAgrupados(mesFiltro);
   populateCartoesDatalist();
   if(cartoes.length === 0){
     list.innerHTML = '<div class="empty">Nenhum cartão cadastrado.</div>';
