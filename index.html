@@ -31,6 +31,10 @@
     background:linear-gradient(160deg,#f8fafc,#e2e8f0);
   }
   *{box-sizing:border-box;}
+  /* Fundo escuro também no <html> (não só no <body>) — sem isso, o efeito de "esticar" do
+     iOS ao rolar além do topo/fim da página revela um branco por trás, mesmo com
+     overscroll-behavior:none (que nem todo Safari respeita 100%). */
+  html{ background:#0f172a; }
   html, body{ overscroll-behavior:none; }
   body{
     margin:0; font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;
@@ -1011,7 +1015,10 @@
 
 <script>
 // Aplica o tema salvo o quanto antes, pra evitar o "flash" do tema errado ao carregar a página.
-if(localStorage.getItem('micelc_tema') === 'claro') document.body.classList.add('tema-claro');
+if(localStorage.getItem('micelc_tema') === 'claro'){
+  document.body.classList.add('tema-claro');
+  document.documentElement.style.background = '#f1f5f9';
+}
 
 // ---------- Firebase ----------
 const firebaseConfig = {
@@ -1291,6 +1298,7 @@ function atualizarLabelTema(){
 }
 function toggleTema(){
   const claro = document.body.classList.toggle('tema-claro');
+  document.documentElement.style.background = claro ? '#f1f5f9' : '#0f172a';
   localStorage.setItem('micelc_tema', claro ? 'claro' : 'escuro');
   atualizarLabelTema();
   if(document.getElementById('appScreen').style.display !== 'none') renderAll();
@@ -3093,10 +3101,14 @@ function linhaLancamentoHtml(item){
         <button class="row-menu-danger" onclick="deleteLancamento('${item.id}')">Excluir</button>
       </div>
     </div>`;
+  const categoriaTexto = item.categoria || '';
   return `
     <tr title="${tooltip.replace(/"/g,'&quot;')}">
       <td>${fmtDate(item.data)}</td>
-      <td><span class="tag ${tag.cls}">${tag.label}</span></td>
+      <td>
+        <span class="tag ${tag.cls}">${tag.label}</span>
+        ${categoriaTexto ? `<div class="hint" style="margin-top:2px;">${categoriaTexto}</div>` : ''}
+      </td>
       <td class="${corValor}">${fmt(item.valor)}</td>
       <td class="actions-cell">${acoes}</td>
     </tr>`;
