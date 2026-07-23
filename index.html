@@ -606,7 +606,7 @@
           </span>
         </div>
         <h2 class="onboarding-title">Importe seus extratos em segundos</h2>
-        <div class="sub onboarding-sub">Traga o extrato do seu banco (OFX) e o Broto organiza tudo pra você.</div>
+        <div class="sub onboarding-sub">Traga o extrato do seu banco em OFX, CSV ou PDF, escolha as categorias e lance tudo de uma vez.</div>
       </div>
       <div class="onboarding-slide">
         <div class="onboarding-art onboarding-art-badge">
@@ -1079,7 +1079,7 @@
       <h3>Extratos</h3>
       <button class="secondary small" onclick="irHome()">Voltar</button>
     </div>
-    <div class="hint" style="margin-bottom:14px;">Importe um arquivo OFX ou CSV exportado do app do seu banco (extrato de conta corrente/poupança ou fatura de cartão) para lançar tudo de uma vez, sem digitar manualmente. Todos os itens vêm com a categoria "Outros" — edite depois quem precisar de outra categoria.</div>
+    <div class="hint" style="margin-bottom:14px;">Importe um arquivo OFX, CSV ou PDF exportado do app do seu banco (extrato de conta corrente/poupança ou fatura de cartão) para lançar tudo de uma vez, sem digitar manualmente. Antes de importar, você confere a lista, escolhe o tipo e a categoria de cada lançamento. PDFs digitalizados (imagem) não podem ser lidos — use o PDF original do banco.</div>
 
     <form class="inline" id="extratoForm" onsubmit="return false;">
       <div class="field">
@@ -1094,8 +1094,8 @@
         <input type="text" id="extratoCartaoNome" placeholder="ex: Nubank, Inter..." list="cartoesDatalist">
       </div>
       <div class="field" style="min-width:220px;">
-        <label>Arquivo (.ofx ou .csv)</label>
-        <input type="file" id="extratoArquivo" accept=".ofx,.qfx,.csv,.txt" onchange="processarArquivoExtrato(event)">
+        <label>Arquivo (.ofx, .csv ou .pdf)</label>
+        <input type="file" id="extratoArquivo" accept=".ofx,.qfx,.csv,.txt,.pdf" onchange="processarArquivoExtrato(event)">
       </div>
     </form>
 
@@ -1109,7 +1109,7 @@
       </div>
       <div class="tbl-wrap">
         <table>
-          <thead><tr><th></th><th>Data</th><th>Descrição</th><th>Valor</th><th>Tipo</th></tr></thead>
+          <thead><tr><th></th><th>Data</th><th>Descrição</th><th>Valor</th><th>Tipo</th><th>Categoria</th></tr></thead>
           <tbody id="extratoPreviewBody"></tbody>
         </table>
       </div>
@@ -1681,45 +1681,157 @@ function parseCSVExtrato(texto){
   }).filter(item => item.data);
 }
 
+// Carrega o pdf.js sob demanda (só quando a pessoa escolhe um PDF), pra não pesar a abertura
+// normal do app. Fica em cache depois da primeira vez.
+let pdfjsCarregando = null;
+function carregarPdfJs(){
+  if(window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+  if(pdfjsCarregando) return pdfjsCarregando;
+  pdfjsCarregando = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    s.onload = () => {
+      if(window.pdfjsLib){
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        resolve(window.pdfjsLib);
+      } else reject(new Error('pdfjs indisponível'));
+    };
+    s.onerror = () => reject(new Error('Falha ao baixar o leitor de PDF (precisa de internet).'));
+    document.head.appendChild(s);
+  });
+  return pdfjsCarregando;
+}
+
+// Extrai o texto de um PDF reconstruindo as linhas: agrupa os pedaços de texto pela posição
+// vertical (y) e ordena pela horizontal (x), já que o pdf.js entrega fragmentos soltos.
+async function extrairLinhasPDF(arrayBuffer){
+  const pdfjsLib = await carregarPdfJs();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const linhas = [];
+  for(let p = 1; p <= pdf.numPages; p++){
+    const page = await pdf.getPage(p);
+    const content = await page.getTextContent();
+    const porLinha = {};
+    content.items.forEach(it => {
+      if(!it.str || !it.str.trim()) return;
+      const y = Math.round(it.transform[5]);
+      (porLinha[y] = porLinha[y] || []).push({ x: it.transform[4], s: it.str });
+    });
+    Object.keys(porLinha).map(Number).sort((a,b) => b - a).forEach(y => {
+      const linha = porLinha[y].sort((a,b) => a.x - b.x).map(o => o.s).join(' ').replace(/\s+/g,' ').trim();
+      if(linha) linhas.push(linha);
+    });
+  }
+  return linhas;
+}
+
+// Interpreta cada linha do extrato/fatura em PDF procurando uma data (dd/mm[/aaaa]) e um valor
+// monetário no formato brasileiro (1.234,56), com sinal/indicador D/C quando houver. É "melhor
+// esforço": o layout varia muito entre bancos, então a pessoa confere tudo antes de importar.
+function parsePDFExtrato(linhas){
+  const reData = /\b(\d{2})\/(\d{2})(?:\/(\d{2,4}))?\b/;
+  const reValor = /([+-])?\s?R?\$?\s?(\d{1,3}(?:\.\d{3})*,\d{2})\s?([DC])?/g;
+  const anoCorrente = new Date().getFullYear();
+  const itens = [];
+  linhas.forEach(linha => {
+    if(/^saldo\b|^saldo\s|dispon[ií]vel\s+em\s+conta/i.test(linha)) return;
+    const md = linha.match(reData);
+    if(!md) return;
+    const valores = [...linha.matchAll(reValor)];
+    if(!valores.length) return;
+    // Primeiro valor da linha = o lançamento (quando há um segundo, costuma ser saldo acumulado).
+    const vm = valores[0];
+    const valorAbs = parseFloat(vm[2].replace(/\./g,'').replace(',','.'));
+    if(!isFinite(valorAbs) || valorAbs === 0) return;
+    const sinal = vm[1]; const suf = (vm[3] || '').toUpperCase();
+    let negativo = true; // padrão: despesa (maioria das linhas); a pessoa ajusta se precisar
+    if(sinal === '+' || suf === 'C') negativo = false;
+    else if(sinal === '-' || suf === 'D') negativo = true;
+    let dia = md[1], mes = md[2], ano = md[3] || String(anoCorrente);
+    if(ano.length === 2) ano = '20' + ano;
+    if(Number(mes) < 1 || Number(mes) > 12 || Number(dia) < 1 || Number(dia) > 31) return;
+    // Descrição = a linha sem a data e sem QUALQUER valor monetário (tira também o saldo
+    // acumulado que alguns bancos imprimem depois do valor do lançamento).
+    let desc = linha.replace(md[0], ' ')
+      .replace(/([+-])?\s?R?\$?\s?\d{1,3}(?:\.\d{3})*,\d{2}\s?([DC])?/g, ' ')
+      .replace(/\s+/g,' ').trim();
+    itens.push({ data: `${ano}-${mes}-${dia}`, valor: negativo ? -valorAbs : valorAbs, descricao: desc.slice(0, 80) });
+  });
+  return itens;
+}
+
+// Monta a lista de conferência a partir dos itens crus, já com uma categoria padrão ("Outros",
+// que existe tanto em receitas quanto em despesas) — a pessoa reclassifica na própria tabela.
+function montarExtratoParsed(itens, tipoExtrato){
+  return itens.map(item => ({
+    data: item.data,
+    descricao: item.descricao,
+    valor: Math.abs(item.valor),
+    tipo: tipoExtrato === 'cartao' ? 'cartao' : (item.valor >= 0 ? 'receita' : 'despesa'),
+    categoria: 'Outros',
+    incluir: true
+  })).sort((a,b) => a.data.localeCompare(b.data));
+}
+
 function processarArquivoExtrato(e){
   const arquivo = e.target.files[0];
-  document.getElementById('extratoErro').textContent = '';
-  document.getElementById('extratoErro').style.color = 'var(--red)';
+  const erroEl = document.getElementById('extratoErro');
+  erroEl.textContent = '';
+  erroEl.style.color = 'var(--red)';
   document.getElementById('extratoPreviewWrap').style.display = 'none';
   extratoParsed = [];
   if(!arquivo) return;
 
+  const nomeArquivo = arquivo.name.toLowerCase();
+  const tipoExtrato = document.getElementById('extratoTipo').value;
+  const erroVazio = 'Não foi possível reconhecer nenhum lançamento nesse arquivo. Confira se é um extrato OFX, um CSV com colunas de Data, Descrição e Valor, ou um PDF de extrato/fatura do banco.';
+
   const leitor = new FileReader();
+  leitor.onerror = function(){ erroEl.textContent = 'Não foi possível ler esse arquivo.'; };
+
+  if(nomeArquivo.endsWith('.pdf') || arquivo.type === 'application/pdf'){
+    erroEl.style.color = 'var(--muted)';
+    erroEl.textContent = 'Lendo o PDF…';
+    leitor.onload = function(ev){
+      extrairLinhasPDF(ev.target.result)
+        .then(linhas => {
+          const itens = parsePDFExtrato(linhas);
+          if(!itens.length){
+            erroEl.style.color = 'var(--red)';
+            erroEl.textContent = linhas.length
+              ? 'Li o PDF, mas não reconheci lançamentos com data e valor. Se for um PDF digitalizado (imagem), use o PDF original do banco ou um arquivo OFX/CSV.'
+              : 'Esse PDF parece ser uma imagem digitalizada (sem texto). Use o PDF original do banco ou um arquivo OFX/CSV.';
+            return;
+          }
+          erroEl.textContent = '';
+          extratoParsed = montarExtratoParsed(itens, tipoExtrato);
+          renderExtratoPreview();
+        })
+        .catch(err => { erroEl.style.color = 'var(--red)'; erroEl.textContent = err.message || 'Não foi possível ler esse PDF.'; });
+    };
+    leitor.readAsArrayBuffer(arquivo);
+    return;
+  }
+
   leitor.onload = function(ev){
     let texto = new TextDecoder('utf-8').decode(ev.target.result);
     if(/charset=iso-8859-1|encoding[:>]\s*iso-8859-1/i.test(texto) || texto.includes('�')){
       texto = new TextDecoder('iso-8859-1').decode(ev.target.result);
     }
-
-    const nomeArquivo = arquivo.name.toLowerCase();
     const ehOFX = nomeArquivo.endsWith('.ofx') || nomeArquivo.endsWith('.qfx') || texto.includes('<STMTTRN>');
     const itens = ehOFX ? parseOFXExtrato(texto) : parseCSVExtrato(texto);
-
-    if(!itens || itens.length === 0){
-      document.getElementById('extratoErro').textContent = 'Não foi possível reconhecer nenhum lançamento nesse arquivo. Confira se é um extrato OFX ou um CSV com colunas de Data, Descrição e Valor.';
-      return;
-    }
-
-    const tipoExtrato = document.getElementById('extratoTipo').value;
-    extratoParsed = itens.map(item => ({
-      data: item.data,
-      descricao: item.descricao,
-      valor: Math.abs(item.valor),
-      tipo: tipoExtrato === 'cartao' ? 'cartao' : (item.valor >= 0 ? 'receita' : 'despesa'),
-      incluir: true
-    })).sort((a,b) => a.data.localeCompare(b.data));
-
+    if(!itens || itens.length === 0){ erroEl.textContent = erroVazio; return; }
+    extratoParsed = montarExtratoParsed(itens, tipoExtrato);
     renderExtratoPreview();
   };
-  leitor.onerror = function(){
-    document.getElementById('extratoErro').textContent = 'Não foi possível ler esse arquivo.';
-  };
   leitor.readAsArrayBuffer(arquivo);
+}
+
+// Categorias oferecidas para cada item da conferência: cartão e despesa usam a lista de
+// despesas; receita usa a de receitas (ambas já incluem as personalizadas do usuário).
+function opcoesCategoriaExtrato(item){
+  const tipoLista = item.tipo === 'receita' ? 'receita' : 'despesa';
+  return listaCategoriasParaTipo(tipoLista);
 }
 
 function renderExtratoPreview(){
@@ -1737,6 +1849,9 @@ function renderExtratoPreview(){
            <option value="receita" ${item.tipo === 'receita' ? 'selected' : ''}>Receita</option>
            <option value="despesa" ${item.tipo === 'despesa' ? 'selected' : ''}>Despesa</option>
          </select>`;
+    const catOpcoes = opcoesCategoriaExtrato(item)
+      .map(c => `<option value="${c}" ${item.categoria === c ? 'selected' : ''}>${c}</option>`).join('');
+    const catCell = `<select onchange="mudarCategoriaExtratoItem(${idx}, this.value)">${catOpcoes}</select>`;
     return `
       <tr>
         <td><input type="checkbox" ${item.incluir ? 'checked' : ''} onchange="toggleExtratoItem(${idx})"></td>
@@ -1744,6 +1859,7 @@ function renderExtratoPreview(){
         <td>${item.descricao || '-'}</td>
         <td class="${cor}">${fmt(item.valor)}</td>
         <td>${tipoCell}</td>
+        <td>${catCell}</td>
       </tr>
     `;
   }).join('');
@@ -1758,6 +1874,15 @@ function selecionarTodosExtrato(valor){
 }
 function mudarTipoExtratoItem(idx, novoTipo){
   extratoParsed[idx].tipo = novoTipo;
+  // Receita e despesa têm listas de categoria diferentes; se a atual não existir na nova
+  // lista, volta pra "Outros" e re-renderiza pra atualizar o seletor de categoria da linha.
+  if(!opcoesCategoriaExtrato(extratoParsed[idx]).includes(extratoParsed[idx].categoria)){
+    extratoParsed[idx].categoria = 'Outros';
+  }
+  renderExtratoPreview();
+}
+function mudarCategoriaExtratoItem(idx, novaCategoria){
+  extratoParsed[idx].categoria = novaCategoria;
 }
 
 function importarExtratoSelecionados(){
@@ -1778,7 +1903,7 @@ function importarExtratoSelecionados(){
       id: uid(),
       data: item.data,
       tipo: item.tipo,
-      categoria: 'Outros',
+      categoria: item.categoria || 'Outros',
       valor: item.valor,
       descricao: item.descricao || '',
       nome: item.tipo === 'cartao' ? nomeCartao : null,
