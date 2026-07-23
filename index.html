@@ -56,7 +56,7 @@
   }
   /* Marca + saudação numa linha à esquerda; a margem no topo desce a linha para não ficar
      embaixo da foto de perfil / sino, que são fixos no topo do banner. */
-  .home-brand{ display:flex; align-items:center; gap:12px; margin-top:46px; position:relative; z-index:1; }
+  .home-brand{ display:flex; align-items:center; gap:12px; margin-top:64px; position:relative; z-index:1; }
   .home-banner .app-logo{ width:44px; height:44px; border-radius:12px; margin:0; flex-shrink:0; box-shadow:0 4px 12px rgba(0,0,0,0.35); position:relative; z-index:1; }
   .home-banner .home-greeting{ position:relative; z-index:1; color:var(--text); margin:0; }
   .home-banner-name{ font-weight:700; letter-spacing:.09em; text-transform:uppercase; color:var(--green); font-size:0.72rem; margin:0 0 2px; }
@@ -517,7 +517,7 @@
     .login-card .app-logo{ width:64px; height:64px; border-radius:16px; }
     .home-banner{ padding:calc(18px + env(safe-area-inset-top)) 14px 14px; margin:-12px -10px 16px -10px; }
     .home-banner .app-logo{ width:38px; height:38px; border-radius:11px; }
-    .home-brand{ margin-top:40px; gap:10px; }
+    .home-brand{ margin-top:56px; gap:10px; }
     .home-greeting{ font-size:1.05rem; }
 
     .panel{ padding:12px; }
@@ -4211,9 +4211,9 @@ function renderCartoesPanel(){
     html += demais.map(({ c, idx }) => {
       const nomeEscapado = (c.nome || '').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
       const meta = c.vencimento ? 'Vence ' + fmtDate(c.vencimento) : (c.total <= 0 ? 'Em dia' : '');
-      const btnEditar = c.latestId ? `<button class="cartao-acao" onclick="event.stopPropagation(); abrirRazao('cartao', '${nomeEscapado}')" title="Ver lançamentos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg></button>` : '';
+      // Sem botões na linha: tocar no cartão o traz para o destaque, onde ficam Pagar/Ver compras.
       const direita = c.total > 0
-        ? `<span class="neg blur-target" style="font-weight:600; margin-right:6px;">${fmt(c.total)}</span><button class="cartao-acao" onclick="event.stopPropagation(); pagarFatura(${idx})" title="Pagar fatura">$</button>`
+        ? `<span class="neg blur-target" style="font-weight:600;">${fmt(c.total)}</span>`
         : '<span class="quitada-tag">Em dia ✓</span>';
       return `
       <div class="list-item cartao-clicavel" onclick="destacarCartao('${nomeEscapado}')" title="Ver em destaque">
@@ -4223,7 +4223,6 @@ function renderCartoesPanel(){
         </div>
         <div class="actions">
           ${direita}
-          ${btnEditar}
         </div>
       </div>`;
     }).join('');
