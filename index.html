@@ -49,14 +49,17 @@
   .login-card .app-logo{width:80px; height:80px; border-radius:20px; margin-bottom:8px;}
   .app-logo-name{display:block; text-align:center; font-weight:700; letter-spacing:.04em; color:var(--text); font-size:1rem; margin-bottom:14px;}
   .home-banner{
-    background-color:var(--border); border-radius:0; padding:calc(22px + env(safe-area-inset-top)) 20px 16px;
+    background-color:var(--border); border-radius:0; padding:calc(22px + env(safe-area-inset-top)) 20px 18px;
     box-shadow:0 4px 14px rgba(0,0,0,0.18);
     margin:-24px -24px 24px -24px;
+    text-align:left;
   }
-  .home-banner .app-logo{ position:relative; z-index:1; }
-  .home-banner .home-greeting{ position:relative; z-index:1; color:var(--text); }
-  .home-banner-name{ font-weight:700; letter-spacing:.06em; color:var(--green); font-size:0.85rem; margin:2px 0 8px; }
-  .home-banner .sub{ position:relative; z-index:1; color:var(--muted); }
+  /* Marca + saudação numa linha à esquerda; a margem no topo desce a linha para não ficar
+     embaixo da foto de perfil / sino, que são fixos no topo do banner. */
+  .home-brand{ display:flex; align-items:center; gap:12px; margin-top:46px; position:relative; z-index:1; }
+  .home-banner .app-logo{ width:44px; height:44px; border-radius:12px; margin:0; flex-shrink:0; box-shadow:0 4px 12px rgba(0,0,0,0.35); position:relative; z-index:1; }
+  .home-banner .home-greeting{ position:relative; z-index:1; color:var(--text); margin:0; }
+  .home-banner-name{ font-weight:700; letter-spacing:.09em; text-transform:uppercase; color:var(--green); font-size:0.72rem; margin:0 0 2px; }
   .sub{color:var(--muted); font-size:0.9rem;}
   .cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin-bottom:28px;}
   .card{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px;}
@@ -161,6 +164,8 @@
   .cartao-featured .cf-actions button{flex:1;}
   .cf-btn-ghost{background:transparent !important; border:1px solid var(--border) !important; color:var(--text) !important;}
   .cartao-nome-linha{display:flex; align-items:center; gap:6px; font-weight:600;}
+  .list-item.cartao-clicavel{cursor:pointer; border-radius:8px; transition:background .15s;}
+  .list-item.cartao-clicavel:hover{background:var(--card2);}
   .month-filter{display:flex; align-items:center; gap:8px; margin-bottom:14px; flex-wrap:wrap;}
   footer{color:var(--muted); font-size:0.75rem; text-align:center; margin-top:20px;}
   /* Sem display:flex aqui — isso tirava o <td> do modelo de layout de tabela, quebrando o
@@ -511,6 +516,9 @@
     .app-logo{ width:70px; height:70px; border-radius:18px; }
     .login-card .app-logo{ width:64px; height:64px; border-radius:16px; }
     .home-banner{ padding:calc(18px + env(safe-area-inset-top)) 14px 14px; margin:-12px -10px 16px -10px; }
+    .home-banner .app-logo{ width:38px; height:38px; border-radius:11px; }
+    .home-brand{ margin-top:40px; gap:10px; }
+    .home-greeting{ font-size:1.05rem; }
 
     .panel{ padding:12px; }
     .panel h2{ font-size:0.95rem; gap:6px; }
@@ -858,10 +866,13 @@
 <div id="homeView">
 
 <div class="header-block home-banner">
-  <img src="icons/icon-192.png" alt="Broto" class="app-logo">
-  <div class="home-banner-name">Broto</div>
-  <div class="home-greeting" id="homeGreeting"></div>
-  <div class="sub"></div>
+  <div class="home-brand">
+    <img src="icons/icon-192.png" alt="Broto" class="app-logo">
+    <div class="home-brand-text">
+      <div class="home-banner-name">Broto</div>
+      <div class="home-greeting" id="homeGreeting"></div>
+    </div>
+  </div>
 </div>
 
 <div class="cards" id="summaryCards"></div>
@@ -4138,6 +4149,13 @@ function renderContaPanel(){
   }
 }
 
+// Cartão escolhido para aparecer no card em destaque ("zoom"). Null = usa o padrão (maior fatura).
+let cartaoDestaqueNome = null;
+function destacarCartao(nome){
+  cartaoDestaqueNome = nome;
+  renderCartoesPanel();
+}
+
 function renderCartoesPanel(){
   const filtroInput = document.getElementById('filtroMesCartoes');
   const localValor = filtroInput.value;
@@ -4152,9 +4170,15 @@ function renderCartoesPanel(){
   if(cartoes.length === 0){
     list.innerHTML = '<div class="empty">Nenhum cartão cadastrado.</div>';
   } else {
-    // A maior fatura em aberto vira o card de destaque; os demais cartões vão para a lista.
-    const porTotal = cartoes.map((c, idx) => ({ c, idx })).sort((a,b) => b.c.total - a.c.total);
-    const destaque = (porTotal[0] && porTotal[0].c.total > 0) ? porTotal[0] : null;
+    // Card em destaque ("zoom"): por padrão a maior fatura em aberto, mas ao tocar num cartão
+    // da lista ele passa a ser o destaque (cartaoDestaqueNome). Se o selecionado não existir
+    // no filtro atual, volta ao padrão.
+    const comIdx = cartoes.map((c, idx) => ({ c, idx }));
+    let destaque = cartaoDestaqueNome ? comIdx.find(o => o.c.nome === cartaoDestaqueNome) : null;
+    if(!destaque){
+      const porTotal = comIdx.slice().sort((a,b) => b.c.total - a.c.total);
+      destaque = (porTotal[0] && porTotal[0].c.total > 0) ? porTotal[0] : null;
+    }
     let html = '';
 
     if(destaque){
@@ -4166,28 +4190,33 @@ function renderCartoesPanel(){
         : `<span class="cf-logo-nome">${c.nome || 'Cartão'}</span>`;
       const vencPill = c.vencimento ? `<span class="cf-venc">Vence ${fmtDate(c.vencimento)}</span>` : '';
       const btnVer = c.latestId ? `<button class="cf-btn-ghost" onclick="abrirRazao('cartao', '${nomeEscapado}')">Ver compras</button>` : '';
+      const emAberto = c.total > 0;
+      const valorBloco = emAberto
+        ? `<div class="cf-val blur-target">${fmt(c.total)}</div>`
+        : `<div class="cf-val pos">Em dia ✓</div>`;
+      const btnPagar = emAberto ? `<button onclick="pagarFatura(${idx})">Pagar fatura</button>` : '';
       html += `
         <div class="cartao-featured">
           <div class="cf-top">${logoBloco}${vencPill}</div>
-          <div class="cf-kicker">Fatura em aberto${c.nome ? ' · ' + (c.nome||'') : ''}</div>
-          <div class="cf-val blur-target">${fmt(c.total)}</div>
+          <div class="cf-kicker">${emAberto ? 'Fatura em aberto' : 'Cartão'}${c.nome ? ' · ' + (c.nome||'') : ''}</div>
+          ${valorBloco}
           <div class="cf-actions">
-            <button onclick="pagarFatura(${idx})">Pagar fatura</button>
+            ${btnPagar}
             ${btnVer}
           </div>
         </div>`;
     }
 
-    const demais = cartoes.map((c, idx) => ({ c, idx })).filter(o => !destaque || o.idx !== destaque.idx);
+    const demais = comIdx.filter(o => !destaque || o.idx !== destaque.idx);
     html += demais.map(({ c, idx }) => {
       const nomeEscapado = (c.nome || '').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
       const meta = c.vencimento ? 'Vence ' + fmtDate(c.vencimento) : (c.total <= 0 ? 'Em dia' : '');
-      const btnEditar = c.latestId ? `<button class="cartao-acao" onclick="abrirRazao('cartao', '${nomeEscapado}')" title="Ver lançamentos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg></button>` : '';
+      const btnEditar = c.latestId ? `<button class="cartao-acao" onclick="event.stopPropagation(); abrirRazao('cartao', '${nomeEscapado}')" title="Ver lançamentos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg></button>` : '';
       const direita = c.total > 0
-        ? `<span class="neg blur-target" style="font-weight:600; margin-right:6px;">${fmt(c.total)}</span><button class="cartao-acao" onclick="pagarFatura(${idx})" title="Pagar fatura">$</button>`
+        ? `<span class="neg blur-target" style="font-weight:600; margin-right:6px;">${fmt(c.total)}</span><button class="cartao-acao" onclick="event.stopPropagation(); pagarFatura(${idx})" title="Pagar fatura">$</button>`
         : '<span class="quitada-tag">Em dia ✓</span>';
       return `
-      <div class="list-item">
+      <div class="list-item cartao-clicavel" onclick="destacarCartao('${nomeEscapado}')" title="Ver em destaque">
         <div>
           <div class="cartao-nome-linha">${logoENomeHtml(c.nome)}</div>
           <div class="meta">${meta}</div>
